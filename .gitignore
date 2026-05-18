@@ -1,0 +1,4 @@
+cowrie-honeypot/
+log-stack/
+terraform/
+.tailscale-apikey
