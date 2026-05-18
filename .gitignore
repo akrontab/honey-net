@@ -1,4 +1,5 @@
 cowrie-honeypot/
 log-stack/
+mysql-honeypot/
 terraform/
 .tailscale-apikey

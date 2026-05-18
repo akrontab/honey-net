@@ -45,5 +45,16 @@ $cowrieIp   | Set-Content (Join-Path $PSScriptRoot "cowrie-honeypot\.server-ip")
 Write-Host ""
 Write-Host "log-stack       : $logStackIp"
 Write-Host "cowrie-honeypot : $cowrieIp"
+
+# mysql-honeypot is optional — only cache if present in terraform output
+if ($outputs.PSObject.Properties['mysql_ip'] -and -not [string]::IsNullOrWhiteSpace($outputs.mysql_ip.value)) {
+    $mysqlIp = $outputs.mysql_ip.value
+    $mysqlIpPath = Join-Path $PSScriptRoot "mysql-honeypot\.server-ip"
+    if (Test-Path (Split-Path $mysqlIpPath)) {
+        $mysqlIp | Set-Content $mysqlIpPath -NoNewline
+        Write-Host "mysql-honeypot  : $mysqlIp"
+    }
+}
+
 Write-Host ""
 Write-Host "IPs cached — deploy.ps1 and connect.ps1 are ready to use."
