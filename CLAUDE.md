@@ -124,12 +124,11 @@ Deploy log-stack first — its Tailscale IP is required by Vector on every honey
 
 ### 1. Deploy log-stack
 
+> **Note:** `log-stack/` is a separate git repo (gitignored here). Clone it alongside
+> this repo before running `deploy.ps1`. The root script copies from `log-stack/deploy/`.
+
 ```powershell
 .\deploy.ps1 -Server log-stack
-```
-
-SSH in and run setup:
-```powershell
 .\connect.ps1 -Server log-stack   # connects on port 22 (pre-setup)
 ```
 ```bash
@@ -144,24 +143,39 @@ Grafana      : http://100.x.x.x:3000
 Loki         : http://100.x.x.x:3100
 ```
 
-Run `sync-ips.ps1` again to capture the Tailscale IP into `state.json`:
+**Run `sync-ips.ps1` now** — this captures the log-stack Tailscale IP into `state.json`.
+Honeypot `setup.sh` reads that IP from `state.json` to configure Vector. If you skip this
+step, you will have to set `LOKI_HOST` manually in each honeypot's `.env` after the fact.
+
 ```powershell
 .\sync-ips.ps1
 ```
 
 ### 2. Deploy honeypots
 
+For each honeypot server, generate a Tailscale auth key first:
+```powershell
+.\gen-ts-key.ps1 -Ephemeral   # ephemeral — node auto-removes when VM is destroyed
+```
+
+Then deploy and provision:
 ```powershell
 .\deploy.ps1 -Server cowrie-honeypot   # assembles package, SCPs to server
 .\connect.ps1 -Server cowrie-honeypot  # connects on port 22 (pre-setup)
 ```
 ```bash
 sudo bash /root/cowrie-honeypot/setup.sh
-# Prompts for: Tailscale auth key, Loki Tailscale IP, honeypot hostname
+# Prompts for: Tailscale auth key, Loki Tailscale IP (pre-filled from state.json), honeypot hostname
 ```
 
-Repeat for `mysql-honeypot`. After setup, port 22 is closed and SSH moves to port 65022
-on the Tailscale interface only. Run `.\sync-ips.ps1` to capture Tailscale IPs.
+Repeat for `mysql-honeypot`. After each `setup.sh` completes, port 22 is closed and SSH
+moves to port 65022 on the Tailscale interface only.
+
+Once all honeypots are provisioned, run `sync-ips.ps1` a final time to capture their
+Tailscale IPs — these are needed by `redeploy.ps1` and `connect.ps1` going forward:
+```powershell
+.\sync-ips.ps1
+```
 
 ### 3. Verify logs are flowing
 
