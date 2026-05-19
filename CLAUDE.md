@@ -5,21 +5,24 @@ A proof-of-concept honeypot network for threat intelligence and attacker behavio
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│                      Tailscale VPN                       │
-│                                                          │
-│  ┌──────────────────────┐   ┌──────────────────────────┐ │
-│  │      mysql-ssh       │──▶│       log-stack          │ │
-│  │                      │   │                          │ │
-│  │  Cowrie  :22 / :23   │   │  Loki (log store)        │ │
-│  │  MySQL   :3306       │   │  Grafana (dashboards)    │ │
-│  │  Vector  (shipper)   │   │                          │ │
-│  │  Nanode $5/mo        │   │  Nanode $5/mo            │ │
-│  └──────────────────────┘   └──────────────────────────┘ │
-└──────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                         Tailscale VPN                           │
+│                                                                 │
+│  ┌──────────────────────┐                                       │
+│  │   honeypot server    │──┐  ┌──────────────────────────────┐  │
+│  │  service(s) + Vector │  │  │          log-stack           │  │
+│  │  Nanode $5/mo        │  ├─▶│                              │  │
+│  └──────────────────────┘  │  │  Loki (log store)            │  │
+│                            │  │  Grafana (dashboards)        │  │
+│  ┌──────────────────────┐  │  │                              │  │
+│  │   honeypot server    │──┘  │  Nanode $5/mo                │  │
+│  │  service(s) + Vector │     └──────────────────────────────┘  │
+│  │  Nanode $5/mo        │                                       │
+│  └──────────────────────┘                                       │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-- **mysql-ssh** — Combined honeypot server. Cowrie on ports 22/23, MySQL wire-protocol emulator on port 3306, real SSH on port 65022 (Tailscale only). Vector sidecar ships logs to Loki.
+- **honeypot servers** — One or more VMs, each running one or more honeypot service packages (e.g. Cowrie, MySQL) plus a Vector sidecar that ships logs to Loki over Tailscale. Real SSH on port 65022 (Tailscale only). Defined by `honey-net.json`.
 - **log-stack** — Grafana + Loki. Receives logs from all honeypots over Tailscale. Never exposed to the public internet.
 
 All hosts run Ubuntu 24.04 LTS in Docker Compose. The Tailscale VPN connects them and is the only path to real SSH on any host.
