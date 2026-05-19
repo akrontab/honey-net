@@ -160,19 +160,19 @@ For each honeypot server, generate a Tailscale auth key first:
 
 Then deploy and provision:
 ```powershell
-.\deploy.ps1 -Server cowrie-honeypot   # assembles package, SCPs to server
-.\connect.ps1 -Server cowrie-honeypot  # connects on port 22 (pre-setup)
+.\deploy.ps1 -Server mysql-ssh   # assembles package (cowrie + mysql), SCPs to server
+.\connect.ps1 -Server mysql-ssh  # connects on port 22 (pre-setup)
 ```
 ```bash
-sudo bash /root/cowrie-honeypot/setup.sh
+sudo bash /root/mysql-ssh/setup.sh
 # Prompts for: Tailscale auth key, Loki Tailscale IP (pre-filled from state.json), honeypot hostname
 ```
 
-Repeat for `mysql-honeypot`. After each `setup.sh` completes, port 22 is closed and SSH
-moves to port 65022 on the Tailscale interface only.
+After `setup.sh` completes, port 22 is closed and SSH moves to port 65022 on the
+Tailscale interface only.
 
-Once all honeypots are provisioned, run `sync-ips.ps1` a final time to capture their
-Tailscale IPs — these are needed by `redeploy.ps1` and `connect.ps1` going forward:
+Run `sync-ips.ps1` a final time to capture the honeypot's Tailscale IP — needed by
+`redeploy.ps1` and `connect.ps1` going forward:
 ```powershell
 .\sync-ips.ps1
 ```
@@ -194,8 +194,7 @@ In Grafana (`http://<tailscale-ip>:3000`):
 ## Re-deploying after changes
 
 ```powershell
-.\redeploy.ps1 -Server cowrie-honeypot   # Tailscale required
-.\redeploy.ps1 -Server mysql-honeypot
+.\redeploy.ps1 -Server mysql-ssh   # Tailscale required
 .\redeploy.ps1 -Server log-stack
 ```
 
@@ -205,8 +204,7 @@ In Grafana (`http://<tailscale-ip>:3000`):
 ## Pulling logs
 
 ```powershell
-.\get-logs.ps1 -Server cowrie-honeypot   # saves to logs/cowrie-honeypot/
-.\get-logs.ps1 -Server mysql-honeypot    # saves to logs/mysql-honeypot/
+.\get-logs.ps1 -Server mysql-ssh   # saves cowrie.json + mysql-honeypot.json to logs/mysql-ssh/
 ```
 
 Cowrie-specific scripts in the `cowrie-honeypot/` folder (separate repo) still work for
@@ -215,14 +213,11 @@ deeper analysis — `analyze-logs.ps1`, `harvest-keys.ps1`, `get-downloads.ps1`.
 ## Useful server commands
 
 ```bash
-# On cowrie-honeypot
-docker compose -f /opt/cowrie-honeypot/docker-compose.yml ps
-docker compose -f /opt/cowrie-honeypot/docker-compose.yml logs -f cowrie
-docker compose -f /opt/cowrie-honeypot/docker-compose.yml logs -f vector
-
-# On mysql-honeypot
-docker compose -f /opt/mysql-honeypot/docker-compose.yml ps
-docker compose -f /opt/mysql-honeypot/docker-compose.yml logs -f mysql-honeypot
+# On mysql-ssh (runs both cowrie and mysql honeypots)
+docker compose -f /opt/mysql-ssh/docker-compose.yml ps
+docker compose -f /opt/mysql-ssh/docker-compose.yml logs -f cowrie
+docker compose -f /opt/mysql-ssh/docker-compose.yml logs -f mysql-honeypot
+docker compose -f /opt/mysql-ssh/docker-compose.yml logs -f vector
 
 # On log-stack
 docker compose -f /opt/log-stack/docker-compose.yml ps
