@@ -1,5 +1,5 @@
 # Updates a live server over Tailscale (port 65022). Does not touch system configuration.
-# Copies updated service files and runs docker compose up --build.
+# Copies updated service files and restarts the stack.
 # Use deploy.ps1 for first-time provisioning of a fresh server.
 
 param(
@@ -29,7 +29,7 @@ provisioned with deploy.ps1 and setup.sh. Does not touch system configuration (U
 sshd, fail2ban, Tailscale) — only updates service files and restarts the stack.
 
 For honeypots: regenerates docker-compose.yml and copies updated honeypot service files,
-then runs docker compose up --build -d.
+then builds each service image sequentially and runs docker compose up -d.
 
 For backends: copies updated deploy/ folder (excluding .env) and runs docker compose up -d.
 
@@ -144,10 +144,21 @@ $($includePaths -join "`n")
 
     # Sync files from /root/ to /opt/ and restart stack
     Write-Host "Restarting stack on $name..."
+    $compose = "docker compose -f /opt/$name/docker-compose.yml"
     if ($serverDef.type -eq "honeypot") {
-        $restartCmd = "rsync -a --delete --exclude='.env' /root/$name/ /opt/$name/ && docker compose -f /opt/$name/docker-compose.yml up --build -d"
+        # Build each service image sequentially — concurrent builds crash BuildKit.
+        # Map honeypot type to its Docker service name with a build: context.
+        $buildMap = @{ cowrie = "analyzer"; mysql = "mysql-honeypot" }
+        $buildCmds = ($serverDef.honeypots | ForEach-Object {
+            $svc = $buildMap[$_]; if ($svc) { "$compose build $svc" }
+        } | Where-Object { $_ }) -join " && "
+        $restartCmd = if ($buildCmds) {
+            "rsync -a --delete --exclude='.env' /root/$name/ /opt/$name/ && $buildCmds && $compose up -d"
+        } else {
+            "rsync -a --delete --exclude='.env' /root/$name/ /opt/$name/ && $compose up -d"
+        }
     } else {
-        $restartCmd = "rsync -a --delete --exclude='.env' /root/$name/ /opt/$name/ && docker compose -f /opt/$name/docker-compose.yml up -d"
+        $restartCmd = "rsync -a --delete --exclude='.env' /root/$name/ /opt/$name/ && $compose up -d"
     }
     ssh @sshArgs "${remote}" $restartCmd
     if ($LASTEXITCODE -ne 0) { Write-Error "Stack restart failed."; exit 1 }
