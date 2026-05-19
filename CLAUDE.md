@@ -8,24 +8,18 @@ A proof-of-concept honeypot network for threat intelligence and attacker behavio
 ┌──────────────────────────────────────────────────────────┐
 │                      Tailscale VPN                       │
 │                                                          │
-│  ┌──────────────────┐     ┌──────────────────────────┐   │
-│  │  cowrie-honeypot │────▶│       log-stack          │   │
-│  │  Cowrie (SSH)    │     │                          │   │
-│  │  Vector (shipper)│     │  Loki (log store)        │   │
-│  │  Nanode $5/mo    │     │  Grafana (dashboards)    │   │
-│  └──────────────────┘     │                          │   │
-│                           │  Nanode $5/mo            │   │
-│  ┌──────────────────┐     └──────────────────────────┘   │
-│  │  mysql-honeypot  │────▶             ▲                  │
-│  │  MySQL :3306     │                                    │
-│  │  Vector (shipper)│                                    │
-│  │  Nanode $5/mo    │                                    │
-│  └──────────────────┘                                    │
+│  ┌──────────────────────┐   ┌──────────────────────────┐ │
+│  │      mysql-ssh       │──▶│       log-stack          │ │
+│  │                      │   │                          │ │
+│  │  Cowrie  :22 / :23   │   │  Loki (log store)        │ │
+│  │  MySQL   :3306       │   │  Grafana (dashboards)    │ │
+│  │  Vector  (shipper)   │   │                          │ │
+│  │  Nanode $5/mo        │   │  Nanode $5/mo            │ │
+│  └──────────────────────┘   └──────────────────────────┘ │
 └──────────────────────────────────────────────────────────┘
 ```
 
-- **cowrie-honeypot** — SSH honeypot on port 22, Telnet on port 23, real SSH on port 65022 (Tailscale only). Captures sessions, commands, and malware samples.
-- **mysql-honeypot** — MySQL wire-protocol honeypot on port 3306, real SSH on port 65022 (Tailscale only). Logs credentials and SQL queries.
+- **mysql-ssh** — Combined honeypot server. Cowrie on ports 22/23, MySQL wire-protocol emulator on port 3306, real SSH on port 65022 (Tailscale only). Vector sidecar ships logs to Loki.
 - **log-stack** — Grafana + Loki. Receives logs from all honeypots over Tailscale. Never exposed to the public internet.
 
 All hosts run Ubuntu 24.04 LTS in Docker Compose. The Tailscale VPN connects them and is the only path to real SSH on any host.
@@ -39,8 +33,6 @@ honey-net/                    ← this repo (control plane)
     mysql/                    ← mysql service package
   server-config/              ← shared host hardening
   log-stack/                  ← gitignored, separate repo
-  cowrie-honeypot/            ← gitignored, separate repo (legacy)
-  mysql-honeypot/             ← gitignored, separate repo (legacy)
   terraform/                  ← gitignored, separate repo
   honey-net.json              ← authored server manifest
   state.json                  ← gitignored, written by sync-ips.ps1
@@ -71,8 +63,7 @@ Before deploying any server:
 1. **SSH key pair** for each server — path set in `honey-net.json` (`ssh_key` field):
    ```powershell
    ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\log-stack-linode"
-   ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\cowrie-linode"
-   ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\mysql-linode"
+   ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\mysql-ssh-honeypot"
    ```
 
 2. **Tailscale account** — [tailscale.com](https://tailscale.com). Free tier covers this entire project.
@@ -145,7 +136,7 @@ Loki         : http://100.x.x.x:3100
 
 **Run `sync-ips.ps1` now** — this captures the log-stack Tailscale IP into `state.json`.
 Honeypot `setup.sh` reads that IP from `state.json` to configure Vector. If you skip this
-step, you will have to set `LOKI_HOST` manually in each honeypot's `.env` after the fact.
+step, you will have to set `LOKI_HOST` manually in the honeypot's `.env` after the fact.
 
 ```powershell
 .\sync-ips.ps1
@@ -153,12 +144,12 @@ step, you will have to set `LOKI_HOST` manually in each honeypot's `.env` after 
 
 ### 2. Deploy honeypots
 
-For each honeypot server, generate a Tailscale auth key first:
+Generate a Tailscale auth key for the honeypot server:
 ```powershell
 .\gen-ts-key.ps1 -Ephemeral   # ephemeral — node auto-removes when VM is destroyed
 ```
 
-Then deploy and provision:
+Deploy and provision:
 ```powershell
 .\deploy.ps1 -Server mysql-ssh   # assembles package (cowrie + mysql), SCPs to server
 .\connect.ps1 -Server mysql-ssh  # connects on port 22 (pre-setup)
@@ -188,7 +179,7 @@ cd log-stack
 In Grafana (`http://<tailscale-ip>:3000`):
 - `{job="cowrie"}` — Cowrie events
 - `{job="mysql"}` — MySQL credential and query events
-- `{job="auth"}` — host auth.log from any honeypot
+- `{job="auth"}` — host auth.log from the honeypot
 - `{job="malware"}` — YARA analyzer hits from Cowrie
 
 ## Re-deploying after changes
@@ -206,9 +197,6 @@ In Grafana (`http://<tailscale-ip>:3000`):
 ```powershell
 .\get-logs.ps1 -Server mysql-ssh   # saves cowrie.json + mysql-honeypot.json to logs/mysql-ssh/
 ```
-
-Cowrie-specific scripts in the `cowrie-honeypot/` folder (separate repo) still work for
-deeper analysis — `analyze-logs.ps1`, `harvest-keys.ps1`, `get-downloads.ps1`.
 
 ## Useful server commands
 
