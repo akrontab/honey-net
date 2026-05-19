@@ -6,17 +6,19 @@
 echo "[mysql] Opening MySQL honeypot port 3306..."
 ufw allow "3306/tcp" comment 'MySQL honeypot'
 
-# ufw changes can disrupt Docker NAT rules — restart to restore them
-systemctl restart docker
-
 # ── Create volume directories ─────────────────────────────────────────
 echo "[mysql] Creating volume directories..."
 mkdir -p "${DEPLOY_DIR}/mysql/volumes/logs"
 
-# ── Start stack ───────────────────────────────────────────────────────
-echo "[mysql] Building and starting MySQL honeypot stack..."
+# ── Build mysql image and start combined stack ────────────────────────
+# Build explicitly before "up" so analyzer (cowrie) and mysql-honeypot
+# are never built concurrently — concurrent BuildKit builds crash dockerd.
+echo "[mysql] Building mysql-honeypot image..."
 cd "${DEPLOY_DIR}"
-docker compose up -d --build
+docker compose build mysql-honeypot
+
+echo "[mysql] Starting combined honeypot stack..."
+docker compose up -d
 
 echo ""
 echo "================================================================"
