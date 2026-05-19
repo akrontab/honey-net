@@ -3,3 +3,5 @@ log-stack/
 mysql-honeypot/
 terraform/
 .tailscale-apikey
+state.json
+.claude/

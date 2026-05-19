@@ -1,0 +1,32 @@
+[
+  {
+    "name": "log-stack",
+    "type": "backend",
+    "terraform_module": "log_stack",
+    "terraform_output": "log_stack_ip",
+    "ssh_key": "~/.ssh/log-stack-linode",
+    "tailscale_ephemeral": false,
+    "ports": [],
+    "honeypots": []
+  },
+  {
+    "name": "cowrie-honeypot",
+    "type": "honeypot",
+    "terraform_module": "cowrie",
+    "terraform_output": "cowrie_ip",
+    "ssh_key": "~/.ssh/cowrie-linode",
+    "tailscale_ephemeral": true,
+    "ports": [22, 23],
+    "honeypots": ["cowrie"]
+  },
+  {
+    "name": "mysql-honeypot",
+    "type": "honeypot",
+    "terraform_module": "mysql_honeypot",
+    "terraform_output": "mysql_ip",
+    "ssh_key": "~/.ssh/mysql-linode",
+    "tailscale_ephemeral": true,
+    "ports": [3306],
+    "honeypots": ["mysql"]
+  }
+]
