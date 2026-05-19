@@ -24,58 +24,83 @@ A proof-of-concept honeypot network for threat intelligence and attacker behavio
 └──────────────────────────────────────────────────────────┘
 ```
 
-- **cowrie-honeypot** — SSH honeypot on port 22, real SSH on port 65022. Captures attacker sessions, commands, and malware samples. Vector sidecar ships logs to Loki over Tailscale.
-- **mysql-honeypot** — MySQL wire-protocol honeypot on port 3306, real SSH on port 65022. Custom Python asyncio server accepts all auth and logs credentials and SQL queries. Vector ships logs to Loki.
-- **log-stack** — Grafana + Loki. Receives logs from all honeypots over Tailscale. Grafana is accessible only on the Tailscale network (not public internet).
+- **cowrie-honeypot** — SSH honeypot on port 22, Telnet on port 23, real SSH on port 65022 (Tailscale only). Captures sessions, commands, and malware samples.
+- **mysql-honeypot** — MySQL wire-protocol honeypot on port 3306, real SSH on port 65022 (Tailscale only). Logs credentials and SQL queries.
+- **log-stack** — Grafana + Loki. Receives logs from all honeypots over Tailscale. Never exposed to the public internet.
 
-All hosts run Ubuntu 24.04 LTS in Docker Compose. The Tailscale network ties them together regardless of hosting provider.
+All hosts run Ubuntu 24.04 LTS in Docker Compose. The Tailscale VPN connects them and is the only path to real SSH on any host.
 
-## Repos
+## Repo layout
 
-| Folder | Purpose |
-|--------|---------|
-| `cowrie-honeypot/` | Honeypot host — Cowrie SSH/Telnet + Vector |
-| `mysql-honeypot/` | Honeypot host — MySQL wire-protocol emulator + Vector |
-| `log-stack/` | Visualization host — Grafana + Loki |
-| `terraform/` | Infrastructure — creates all hosts on Linode |
+```
+honey-net/                    ← this repo (control plane)
+  honey-pots/
+    cowrie/                   ← cowrie service package
+    mysql/                    ← mysql service package
+  server-config/              ← shared host hardening
+  log-stack/                  ← gitignored, separate repo
+  cowrie-honeypot/            ← gitignored, separate repo (legacy)
+  mysql-honeypot/             ← gitignored, separate repo (legacy)
+  terraform/                  ← gitignored, separate repo
+  honey-net.json              ← authored server manifest
+  state.json                  ← gitignored, written by sync-ips.ps1
+  deploy.ps1                  ← first deploy (port 22)
+  redeploy.ps1                ← update a live server (port 65022, Tailscale)
+  connect.ps1                 ← SSH into a server
+  sync-ips.ps1                ← write IPs from terraform + Tailscale to state.json
+  get-logs.ps1                ← pull logs from a honeypot
+  gen-ts-key.ps1              ← generate a Tailscale auth key
+```
 
-Each repo has its own `CLAUDE.md` with host-specific gotchas and commands.
+`honey-net.json` is the single source of truth for all servers. All root scripts read from it. See `DESIGN.md` for the full architecture.
+
+Each component has its own `CLAUDE.md`:
+
+| Path | Contents |
+|------|----------|
+| `honey-pots/cowrie/CLAUDE.md` | Cowrie protocol, log paths, gotchas |
+| `honey-pots/mysql/CLAUDE.md` | MySQL emulator, event types, gotchas |
+| `server-config/CLAUDE.md` | Base setup.sh steps, Tailscale SSH restriction |
+| `log-stack/CLAUDE.md` | Grafana/Loki config, LogQL queries |
+| `terraform/CLAUDE.md` | Terraform usage, for_each design, state keys |
 
 ## Prerequisites
 
-Before deploying either host you need:
+Before deploying any server:
 
-1. **SSH key pair** for each host — generated automatically by `setup-key.ps1` in each repo, or manually:
+1. **SSH key pair** for each server — path set in `honey-net.json` (`ssh_key` field):
    ```powershell
-   ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\cowrie-linode"
    ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\log-stack-linode"
+   ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\cowrie-linode"
+   ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\mysql-linode"
    ```
 
 2. **Tailscale account** — [tailscale.com](https://tailscale.com). Free tier covers this entire project.
-   Generate an auth key for each new host:
+   Generate an auth key for each new host before running `setup.sh`:
    ```powershell
-   .\gen-ts-key.ps1              # log-stack — non-ephemeral (survives reboots)
-   .\gen-ts-key.ps1 -Ephemeral   # cowrie — ephemeral (auto-removed from tailnet on destroy)
+   .\gen-ts-key.ps1              # backend servers — non-ephemeral (survives reboots)
+   .\gen-ts-key.ps1 -Ephemeral   # honeypot servers — auto-removed from tailnet on destroy
    ```
-   First run prompts for a Tailscale **API key** (Settings → Keys → Generate API key) and offers to save it to `~/.tailscale-apikey`. Subsequent runs print a fresh auth key ready to paste into `setup.sh`.
+   First run prompts for a Tailscale **API key** (tailscale.com → Settings → Keys → Generate API key)
+   and saves it to `~/.tailscale-apikey`. Subsequent runs print a fresh auth key.
 
-   Ephemeral nodes disappear from the tailnet automatically when the VM is destroyed — no manual cleanup in the Tailscale admin console needed.
-
-3. **Linode API token** — cloud.linode.com → Profile → API Tokens → Create. Requires Read/Write access to Linodes.
+3. **Linode API token** — cloud.linode.com → Profile → API Tokens → Create.
+   Requires Read/Write Linodes and Read Only Events scopes.
 
 ## Provisioning with Terraform
 
-Terraform creates both hosts and injects SSH keys automatically. Run once per environment.
+Terraform reads `honey-net.json` directly — adding a server entry is the only change needed.
+Root passwords are auto-generated and stored in Terraform state.
 
 ```powershell
 cd terraform
 copy terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars — add linode_token and root passwords
+# Edit terraform.tfvars — add linode_token (and optionally region)
 terraform init
 terraform plan
 terraform apply
 cd ..
-.\sync-ips.ps1    # caches IPs from terraform outputs into each repo's .server-ip
+.\sync-ips.ps1    # reads terraform output + Tailscale API, writes state.json
 ```
 
 To destroy all infrastructure:
@@ -83,138 +108,114 @@ To destroy all infrastructure:
 cd terraform && terraform destroy
 ```
 
-### Adding a second honeypot via Terraform
+### Adding a new server
 
-Add a new module block to `terraform/main.tf`:
+1. Add an entry to `honey-net.json` with `name`, `type`, `ssh_key`, `ports`, and `honeypots`.
+2. Generate an SSH key pair for the new server.
+3. If it's a new honeypot type, create `honey-pots/<name>/` with the standard layout.
+4. Run `terraform apply` — the new VM is created automatically.
+5. Run `.\sync-ips.ps1` to add the new server to `state.json`.
 
-```hcl
-module "cowrie_2" {
-  source     = "./modules/host"
-  label      = "cowrie-honeypot-2"
-  region     = var.region
-  ssh_pubkey = file(pathexpand("~/.ssh/cowrie-linode.pub"))
-  root_pass  = var.cowrie_root_pass
-  tags       = ["honey-net", "cowrie"]
-}
-```
+No changes to `terraform/main.tf` are needed.
 
-Then `terraform apply` and `.\sync-ips.ps1`.
+## Deployment order
 
-## Deployment Order
-
-Deploy log-stack first so its Tailscale IP is known before configuring Cowrie's Vector shipper.
+Deploy log-stack first — its Tailscale IP is required by Vector on every honeypot.
 
 ### 1. Deploy log-stack
 
 ```powershell
-cd log-stack
-.\deploy.ps1           # copies deploy/ to server (IP read from .server-ip)
-.\connect.ps1          # SSH in
+.\deploy.ps1 -Server log-stack
 ```
 
-On the server:
+SSH in and run setup:
+```powershell
+.\connect.ps1 -Server log-stack   # connects on port 22 (pre-setup)
+```
 ```bash
-sudo bash /root/log-stack/setup/setup.sh
+sudo bash /root/log-stack/setup.sh
 # Prompts for: Tailscale auth key, Grafana admin password
 ```
 
-When setup completes it prints:
+When setup completes it prints the Tailscale IP:
 ```
 Tailscale IP : 100.x.x.x
 Grafana      : http://100.x.x.x:3000
 Loki         : http://100.x.x.x:3100
 ```
 
-Note the Tailscale IP — you need it for the next step.
+Run `sync-ips.ps1` again to capture the Tailscale IP into `state.json`:
+```powershell
+.\sync-ips.ps1
+```
 
-### 2. Deploy cowrie-honeypot
+### 2. Deploy honeypots
 
 ```powershell
-cd cowrie-honeypot
-.\deploy.ps1           # copies deploy/ to server
-.\connect.ps1          # SSH in (port 22 before setup, 65022 after)
+.\deploy.ps1 -Server cowrie-honeypot   # assembles package, SCPs to server
+.\connect.ps1 -Server cowrie-honeypot  # connects on port 22 (pre-setup)
+```
+```bash
+sudo bash /root/cowrie-honeypot/setup.sh
+# Prompts for: Tailscale auth key, Loki Tailscale IP, honeypot hostname
 ```
 
-On the server:
-```bash
-sudo bash /root/cowrie-honeypot/setup/setup.sh
-```
-
-After setup, create the `.env` for Vector:
-```bash
-cp /opt/cowrie-honeypot/.env.example /opt/cowrie-honeypot/.env
-nano /opt/cowrie-honeypot/.env
-# Set LOKI_HOST to the Tailscale IP from step 1
-```
-
-Restart to bring Vector up with the correct target:
-```bash
-cd /opt/cowrie-honeypot && docker compose up -d
-```
+Repeat for `mysql-honeypot`. After setup, port 22 is closed and SSH moves to port 65022
+on the Tailscale interface only. Run `.\sync-ips.ps1` to capture Tailscale IPs.
 
 ### 3. Verify logs are flowing
 
-From your local machine:
 ```powershell
+# Push a test log line to Loki (requires Tailscale running locally)
 cd log-stack
-.\test-loki.ps1       # pushes a test log line, confirms Tailscale + Loki are working
+.\test-loki.ps1
 ```
 
-In Grafana (`http://<tailscale-ip>:3000`, admin / your password):
-- Go to Explore → select Loki datasource
-- Query: `{job="cowrie"}` — should show Cowrie events
-- Query: `{job="auth"}` — should show host auth.log from the honeypot
+In Grafana (`http://<tailscale-ip>:3000`):
+- `{job="cowrie"}` — Cowrie events
+- `{job="mysql"}` — MySQL credential and query events
+- `{job="auth"}` — host auth.log from any honeypot
+- `{job="malware"}` — YARA analyzer hits from Cowrie
 
-## Re-deploying After Changes
+## Re-deploying after changes
 
 ```powershell
-# Push updated files to a host
-cd cowrie-honeypot
-.\deploy.ps1 -PostSetup     # uses port 65022
-
-cd log-stack
-.\deploy.ps1 -PostSetup
+.\redeploy.ps1 -Server cowrie-honeypot   # Tailscale required
+.\redeploy.ps1 -Server mysql-honeypot
+.\redeploy.ps1 -Server log-stack
 ```
 
-Then on each server:
-```bash
-sudo bash /root/<project>/setup/setup.sh --redeploy
-```
+`redeploy.ps1` copies updated files to the server via Tailscale (port 65022) and runs
+`docker compose up --build -d`. Does not touch system configuration. The `.env` is preserved.
 
-`--redeploy` syncs files from `/root/<project>/` to `/opt/<project>/` and runs `docker compose up -d` (with `--build` on cowrie). Skips all system provisioning steps. The `.env` is preserved.
-
-## Adding a Second Honeypot
-
-1. Add a new module block in `terraform/main.tf` (see Terraform section above) and run `terraform apply`.
-2. Run `.\sync-ips.ps1` to pick up the new IP — or note it from the terraform output.
-3. Deploy and provision it the same way as the first cowrie host.
-4. Set `LOKI_HOST` in its `.env` to the same log-stack Tailscale IP.
-5. Use a distinct `HONEYPOT_HOSTNAME` in `.env` (e.g., `cowrie-honeypot-2`) so logs from each host are labeled separately in Grafana.
-
-## Logs and Samples (cowrie-honeypot)
+## Pulling logs
 
 ```powershell
-cd cowrie-honeypot
-.\get-logs.ps1          # pull cowrie.json to logs/
-.\get-downloads.ps1     # pull malware samples to downloads/
-.\analyze-logs.ps1      # quick PowerShell summary
-.\harvest-keys.ps1      # extract attacker SSH keys, push back to Cowrie
+.\get-logs.ps1 -Server cowrie-honeypot   # saves to logs/cowrie-honeypot/
+.\get-logs.ps1 -Server mysql-honeypot    # saves to logs/mysql-honeypot/
 ```
 
-## Useful Server Commands
+Cowrie-specific scripts in the `cowrie-honeypot/` folder (separate repo) still work for
+deeper analysis — `analyze-logs.ps1`, `harvest-keys.ps1`, `get-downloads.ps1`.
+
+## Useful server commands
 
 ```bash
-# cowrie-honeypot host
+# On cowrie-honeypot
 docker compose -f /opt/cowrie-honeypot/docker-compose.yml ps
 docker compose -f /opt/cowrie-honeypot/docker-compose.yml logs -f cowrie
 docker compose -f /opt/cowrie-honeypot/docker-compose.yml logs -f vector
 
-# log-stack host
+# On mysql-honeypot
+docker compose -f /opt/mysql-honeypot/docker-compose.yml ps
+docker compose -f /opt/mysql-honeypot/docker-compose.yml logs -f mysql-honeypot
+
+# On log-stack
 docker compose -f /opt/log-stack/docker-compose.yml ps
 docker compose -f /opt/log-stack/docker-compose.yml logs -f loki
 docker compose -f /opt/log-stack/docker-compose.yml logs -f grafana
 
-# Tailscale status (either host)
+# Tailscale (any host)
 tailscale status
 tailscale ip -4
 ```
