@@ -145,6 +145,7 @@ $($includePaths -join "`n")
     # Sync files from /root/ to /opt/ and restart stack
     Write-Host "Restarting stack on $name..."
     $compose = "docker compose -f /opt/$name/docker-compose.yml"
+    $rsync   = "rsync -a --delete --exclude='.env' /root/$name/ /opt/$name/ && chmod -R a+rX /opt/$name/"
     if ($serverDef.type -eq "honeypot") {
         # Build each service image sequentially — concurrent builds crash BuildKit.
         # Map honeypot type to its Docker service name with a build: context.
@@ -153,12 +154,12 @@ $($includePaths -join "`n")
             $svc = $buildMap[$_]; if ($svc) { "$compose build $svc" }
         } | Where-Object { $_ }) -join " && "
         $restartCmd = if ($buildCmds) {
-            "rsync -a --delete --exclude='.env' /root/$name/ /opt/$name/ && $buildCmds && $compose up -d"
+            "$rsync && $buildCmds && $compose up -d"
         } else {
-            "rsync -a --delete --exclude='.env' /root/$name/ /opt/$name/ && $compose up -d"
+            "$rsync && $compose up -d"
         }
     } else {
-        $restartCmd = "rsync -a --delete --exclude='.env' /root/$name/ /opt/$name/ && $compose up -d"
+        $restartCmd = "$rsync && $compose up -d"
     }
     ssh @sshArgs "${remote}" $restartCmd
     if ($LASTEXITCODE -ne 0) { Write-Error "Stack restart failed."; exit 1 }
