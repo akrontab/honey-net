@@ -1,0 +1,25 @@
+# Cowrie userdb - used by auth_class = UserDB.
+# Format: username:uid:password
+#   *           wildcard (any username or password)
+#   !password   explicitly deny this password
+#   /regex/     match password with regex
+#
+# Common default credentials attackers try first -- accept them to maximize
+# session captures from credential-stuffing bots.
+root:x:*
+admin:x:*
+ubuntu:x:*
+ec2-user:x:*
+administrator:x:*
+user:x:*
+test:x:*
+guest:x:*
+pi:x:*
+oracle:x:*
+postgres:x:*
+mysql:x:*
+sol:x:*
+validator:x:*
+solv:x:*
+solana:x:*
+node:x:*

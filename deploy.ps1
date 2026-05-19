@@ -122,11 +122,19 @@ include:
 $($includePaths -join "`n")
 "@ | Set-Content (Join-Path $pkgDir "docker-compose.yml") -Encoding UTF8
 
+        # Copy server-config conf files alongside setup.sh so it can reference them via $SCRIPT_DIR
+        $confFiles = @("sshd_hardening.conf", "99-hardening.conf", "fail2ban-jail.local")
+        foreach ($cf in $confFiles) {
+            $src = Join-Path $PSScriptRoot "server-config\$cf"
+            if (-not (Test-Path $src)) { Write-Error "server-config/$cf not found."; exit 1 }
+            Copy-Item $src (Join-Path $pkgDir $cf)
+        }
+
         # Copy each honeypot's deploy/ folder
         foreach ($hp in $serverDef.honeypots) {
             $hpSrc = Join-Path $PSScriptRoot "honey-pots\$hp\deploy"
             if (-not (Test-Path $hpSrc)) {
-                Write-Error "Honeypot deploy folder not found: $hpSrc`nRun the restructure before deploying honeypot servers."
+                Write-Error "Honeypot deploy folder not found: $hpSrc"
                 exit 1
             }
             $hpDst = Join-Path $pkgDir $hp

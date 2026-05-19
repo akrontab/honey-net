@@ -145,7 +145,7 @@ $($includePaths -join "`n")
     # Sync files from /root/ to /opt/ and restart stack
     Write-Host "Restarting stack on $name..."
     if ($serverDef.type -eq "honeypot") {
-        $restartCmd = "rsync -a --delete /root/$name/ /opt/$name/ && docker compose -f /opt/$name/docker-compose.yml up --build -d"
+        $restartCmd = "rsync -a --delete --exclude='.env' /root/$name/ /opt/$name/ && docker compose -f /opt/$name/docker-compose.yml up --build -d"
     } else {
         $restartCmd = "rsync -a --delete --exclude='.env' /root/$name/ /opt/$name/ && docker compose -f /opt/$name/docker-compose.yml up -d"
     }
