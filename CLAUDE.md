@@ -123,7 +123,7 @@ Deploy log-stack first — its Tailscale IP is required by Vector on every honey
 
 ```powershell
 .\deploy.ps1 -Server log-stack
-.\connect.ps1 -Server log-stack   # connects on port 22 (pre-setup)
+.\connect.ps1 -Server log-stack -PreSetup   # port 22 via public IP (before setup.sh runs)
 ```
 ```bash
 sudo bash /root/log-stack/setup.sh
@@ -155,7 +155,7 @@ Generate a Tailscale auth key for the honeypot server:
 Deploy and provision:
 ```powershell
 .\deploy.ps1 -Server mysql-ssh   # assembles package (cowrie + mysql), SCPs to server
-.\connect.ps1 -Server mysql-ssh  # connects on port 22 (pre-setup)
+.\connect.ps1 -Server mysql-ssh -PreSetup   # port 22 via public IP (before setup.sh runs)
 ```
 ```bash
 sudo bash /root/mysql-ssh/setup.sh

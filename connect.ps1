@@ -1,8 +1,10 @@
-# Opens an interactive SSH session to a server via Tailscale (port 65022).
-# Requires Tailscale running locally and state.json with tailscale_ip entries.
+# Opens an interactive SSH session to a server.
+# Default: port 65022 via Tailscale IP (post-setup).
+# -PreSetup: port 22 via public IP (before setup.sh has run).
 
 param(
     [string]$Server,
+    [switch]$PreSetup,
     [switch]$h,
     [switch]$Help
 )
@@ -21,24 +23,26 @@ if ($h -or $Help) {
     }) -join "`n"
 
     Write-Host @"
-connect.ps1 [-Server <name>] [-h]
+connect.ps1 [-Server <name>] [-PreSetup] [-h]
 
-Opens an SSH session to a server on port 65022 via its Tailscale IP.
-The server must have been provisioned with deploy.ps1 and setup.sh.
+Opens an SSH session to a server.
+
+  Default    Port 65022 via Tailscale IP. Use after setup.sh has run.
+  -PreSetup  Port 22 via public IP. Use before setup.sh runs (fresh server).
 
 SERVERS (from honey-net.json)
 $serverBlock
 
 REQUIRES
-  Tailscale running locally
-  state.json with tailscale_ip entries (run sync-ips.ps1 after servers join Tailscale)
+  Default:   Tailscale running locally; state.json with tailscale_ip entries
+  -PreSetup: state.json with public_ip entries (run sync-ips.ps1 after terraform apply)
 "@
     exit 0
 }
 
 # Load state
 if (-not (Test-Path $stateFile)) {
-    Write-Error "state.json not found. Run sync-ips.ps1."
+    Write-Error "state.json not found. Run sync-ips.ps1 after terraform apply."
     exit 1
 }
 $state = Get-Content $stateFile | ConvertFrom-Json
@@ -49,10 +53,14 @@ if (-not $Server) {
     Write-Host "Select a server to connect to:"
     $i = 0
     foreach ($s in $servers) {
-        $tsIp  = if ($state.PSObject.Properties[$s.name]) { $state.$($s.name).tailscale_ip } else { $null }
-        $ipStr = if ($tsIp) { $tsIp } else { "(no Tailscale IP — run sync-ips.ps1)" }
+        $entry = if ($state.PSObject.Properties[$s.name]) { $state.$($s.name) } else { $null }
+        if ($PreSetup) {
+            $ipStr = if ($entry.public_ip) { $entry.public_ip } else { "(no public IP — run sync-ips.ps1)" }
+        } else {
+            $ipStr = if ($entry.tailscale_ip) { $entry.tailscale_ip } else { "(no Tailscale IP — run sync-ips.ps1)" }
+        }
         $ports = if ($s.ports.Count) { $s.ports -join "," } else { "none" }
-        Write-Host ("  [{0}] {1,-25} type={2,-10} ports={3,-10} tailscale={4}" -f $i, $s.name, $s.type, $ports, $ipStr)
+        Write-Host ("  [{0}] {1,-25} type={2,-10} ports={3,-10} ip={4}" -f $i, $s.name, $s.type, $ports, $ipStr)
         $i++
     }
     Write-Host ""
@@ -70,17 +78,31 @@ if (-not $Server) {
     }
 }
 
-$name        = $serverDef.name
-$sshKey      = ($serverDef.ssh_key -replace "^~", $env:USERPROFILE)
-$tailscaleIp = if ($state.PSObject.Properties[$name]) { $state.$name.tailscale_ip } else { $null }
+$name   = $serverDef.name
+$sshKey = ($serverDef.ssh_key -replace "^~", $env:USERPROFILE)
+$entry  = if ($state.PSObject.Properties[$name]) { $state.$name } else { $null }
 
-if ([string]::IsNullOrWhiteSpace($tailscaleIp)) {
-    Write-Error "No Tailscale IP for '$name' in state.json. Run sync-ips.ps1 (Tailscale must be active)."
-    exit 1
+if ($PreSetup) {
+    $ip = $entry.public_ip
+    if ([string]::IsNullOrWhiteSpace($ip)) {
+        Write-Error "No public IP for '$name' in state.json. Run sync-ips.ps1 after terraform apply."
+        exit 1
+    }
+    Write-Host "Connecting to $name ($ip) on port 22 (pre-setup)..."
+    ssh -i $sshKey -p 22 `
+        -o StrictHostKeyChecking=no `
+        -o UserKnownHostsFile=NUL `
+        "root@${ip}"
+} else {
+    $ip = $entry.tailscale_ip
+    if ([string]::IsNullOrWhiteSpace($ip)) {
+        Write-Error "No Tailscale IP for '$name' in state.json. Run sync-ips.ps1 (Tailscale must be active)."
+        Write-Host "  If this is a fresh server that hasn't run setup.sh yet, use: .\connect.ps1 -Server $name -PreSetup"
+        exit 1
+    }
+    Write-Host "Connecting to $name ($ip) on port 65022..."
+    ssh -i $sshKey -p 65022 `
+        -o StrictHostKeyChecking=no `
+        -o UserKnownHostsFile=NUL `
+        "root@${ip}"
 }
-
-Write-Host "Connecting to $name ($tailscaleIp) on port 65022..."
-ssh -i $sshKey -p 65022 `
-    -o StrictHostKeyChecking=no `
-    -o UserKnownHostsFile=NUL `
-    "root@${tailscaleIp}"
