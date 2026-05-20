@@ -13,12 +13,13 @@ def _dim(t):   return _c("2",    t)
 def _cyan(t):  return _c("36;1", t)
 
 COMMANDS = [
-    ("deploy",   "deploy",     "First deploy to a server (port 22)"),
-    ("redeploy", "redeploy",   "Update a live server (port 65022, Tailscale)"),
-    ("connect",  "connect",    "Open an SSH session to a server"),
-    ("sync",     "sync_ips",   "Sync IPs from Terraform + Tailscale to state.json"),
-    ("logs",     "get_logs",   "Pull logs from a honeypot server"),
-    ("gen-key",  "gen_ts_key", "Generate a Tailscale auth key"),
+    ("deploy",     "deploy",          "First deploy to a server (port 22)"),
+    ("redeploy",   "redeploy",        "Update a live server (port 65022, Tailscale)"),
+    ("connect",    "connect",         "Open an SSH session to a server"),
+    ("sync",       "sync_ips",        "Sync IPs from Terraform + Tailscale to state.json"),
+    ("logs",       "get_logs",        "Pull logs from a honeypot server"),
+    ("gen-key",    "gen_ts_key",      "Generate a Tailscale auth key"),
+    ("check-keys", "check_ssh_keys",  "Check SSH keys in honey-net.json; generate missing"),
 ]
 
 _CMD_MAP = {name: (module, desc) for name, module, desc in COMMANDS}
