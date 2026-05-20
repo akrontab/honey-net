@@ -12,30 +12,53 @@ def _bold(t):  return _c("1",    t)
 def _dim(t):   return _c("2",    t)
 def _cyan(t):  return _c("36;1", t)
 
+def _ask(prompt, default=False):
+    """Prompt for a yes/no question; return bool. default=False means [y/N]."""
+    hint = "[Y/n]" if default else "[y/N]"
+    try:
+        ans = input(f"  {prompt} {hint}: ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return default
+    if ans in ("y", "yes"):
+        return True
+    if ans in ("n", "no"):
+        return False
+    return default
+
+def _connect_args():
+    pre = _ask("Pre-setup mode? (port 22, before setup.sh runs)")
+    return ["--pre-setup"] if pre else []
+
+def _gen_key_args():
+    eph = _ask("Ephemeral key? (auto-removed from tailnet when offline)")
+    return ["--ephemeral"] if eph else []
+
+# (name, module, description, interactive-args-fn-or-None)
 COMMANDS = [
-    ("deploy",     "deploy",          "First deploy to a server (port 22)"),
-    ("redeploy",   "redeploy",        "Update a live server (port 65022, Tailscale)"),
-    ("connect",    "connect",         "Open an SSH session to a server"),
-    ("sync",       "sync_ips",        "Sync IPs from Terraform + Tailscale to state.json"),
-    ("logs",       "get_logs",        "Pull logs from a honeypot server"),
-    ("gen-key",    "gen_ts_key",      "Generate a Tailscale auth key"),
-    ("check-keys", "check_ssh_keys",  "Check SSH keys in honey-net.json; generate missing"),
+    ("deploy",     "deploy",         "First deploy to a server (port 22)",            None),
+    ("redeploy",   "redeploy",       "Update a live server (port 65022, Tailscale)",  None),
+    ("connect",    "connect",        "Open an SSH session to a server",               _connect_args),
+    ("sync",       "sync_ips",       "Sync IPs from Terraform + Tailscale to state.json", None),
+    ("logs",       "get_logs",       "Pull logs from a honeypot server",              None),
+    ("gen-key",    "gen_ts_key",     "Generate a Tailscale auth key",                 _gen_key_args),
+    ("check-keys", "check_ssh_keys", "Check SSH keys in honey-net.json; generate missing", None),
 ]
 
-_CMD_MAP = {name: (module, desc) for name, module, desc in COMMANDS}
+_CMD_MAP = {name: (module, desc, fn) for name, module, desc, fn in COMMANDS}
 
 def usage():
     print(f"Usage: python honey.py <command> [args...]\n")
     print("Commands:")
     width = max(len(name) for name, *_ in COMMANDS)
-    for name, _, desc in COMMANDS:
+    for name, _, desc, *__ in COMMANDS:
         print(f"  {name:<{width}}  {desc}")
     print("\nPass --help to any command for its options.")
 
 def menu():
     print(f"\n{_bold('Honey-Net')}\n")
     width = max(len(name) for name, *_ in COMMANDS)
-    for i, (name, _, desc) in enumerate(COMMANDS, 1):
+    for i, (name, _, desc, *__) in enumerate(COMMANDS, 1):
         print(f"  {_cyan(str(i))}  {_bold(name):<{width + 9}}  {_dim(desc)}")
     print(f"  {_cyan('q')}  quit\n")
     try:
@@ -51,8 +74,9 @@ def menu():
     return COMMANDS[int(choice) - 1][0]
 
 def dispatch(cmd):
-    module, _ = _CMD_MAP[cmd]
-    sys.argv = [f"{module}.py"]
+    module, _, args_fn = _CMD_MAP[cmd]
+    extra = args_fn() if args_fn else []
+    sys.argv = [f"{module}.py"] + extra
     importlib.import_module(module).main()
 
 def main():
@@ -76,7 +100,7 @@ def main():
         usage()
         sys.exit(1)
 
-    module, _ = _CMD_MAP[cmd]
+    module, _, _ = _CMD_MAP[cmd]
     sys.argv = [f"{module}.py"] + sys.argv[2:]
     importlib.import_module(module).main()
 

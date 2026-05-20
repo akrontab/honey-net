@@ -4,6 +4,65 @@ A proof-of-concept honeypot network for threat intelligence and attacker behavio
 
 **Cost:** ~$10–15/mo on Linode Nanodes. **CLAUDE.md** has full technical details for every component.
 
+## Quick start
+
+Accounts needed: [Linode](https://linode.com) (API token) · [Tailscale](https://tailscale.com) (API key, free tier)
+
+**1. Clone and set up**
+```powershell
+git clone https://github.com/your-org/honey-net
+cd honey-net
+.\setup.ps1                  # macOS/Linux: ./setup.sh
+.venv\Scripts\activate
+python honey.py check-keys   # generates any missing SSH key pairs
+```
+
+**2. Provision VMs with Terraform**
+```powershell
+cd terraform
+copy terraform.tfvars.example terraform.tfvars
+# Add your linode_token to terraform.tfvars
+terraform init && terraform apply
+cd ..
+python honey.py sync         # writes public IPs to state.json
+```
+
+**3. Deploy log-stack** (Grafana + Loki — do this first)
+```
+python honey.py gen-key      # generate a non-ephemeral Tailscale key
+python honey.py deploy       # select: log-stack
+python honey.py connect      # select: log-stack → pre-setup: y
+```
+```bash
+sudo bash /root/log-stack/setup.sh
+# prompts for: Tailscale auth key, Grafana admin password
+```
+```
+python honey.py sync         # captures log-stack Tailscale IP
+```
+
+**4. Deploy a honeypot**
+```
+python honey.py gen-key      # ephemeral: y
+python honey.py deploy       # select: your honeypot server
+python honey.py connect      # select: honeypot → pre-setup: y
+```
+```bash
+sudo bash /root/<server-name>/setup.sh
+# prompts for: Tailscale auth key, Loki IP (pre-filled), hostname
+```
+```
+python honey.py sync
+```
+
+**5. Verify**
+```
+python honey.py logs         # pull log files locally
+```
+Open Grafana at `http://<log-stack-tailscale-ip>:3000` — logs appear under `{job="cowrie"}`, `{job="mysql"}`.
+
+---
+
 ## Architecture
 
 ```
@@ -129,15 +188,45 @@ sudo bash /root/mysql-ssh/setup.sh
 python sync_ips.py
 ```
 
-## Common commands
+## honey.py — interactive launcher
 
-All commands support interactive mode (no flags) via `python honey.py`, or direct flags:
+`python honey.py` opens a numbered menu for all commands. Select a command; for options that vary (e.g. ephemeral vs. persistent Tailscale key, pre-setup vs. normal SSH), it prompts before running.
 
 ```
-python connect.py --server mysql-ssh       # SSH in (Tailscale required)
-python redeploy.py --server mysql-ssh      # push updates + restart stack
-python get_logs.py --server mysql-ssh      # pull cowrie.json + mysql-honeypot.json
-python sync_ips.py                         # refresh state.json after any IP change
+Honey-Net
+
+  1  deploy      First deploy to a server (port 22)
+  2  redeploy    Update a live server (port 65022, Tailscale)
+  3  connect     Open an SSH session to a server
+  4  sync        Sync IPs from Terraform + Tailscale to state.json
+  5  logs        Pull logs from a honeypot server
+  6  gen-key     Generate a Tailscale auth key
+  7  check-keys  Check SSH keys in honey-net.json; generate missing
+  q  quit
+
+Select:
+```
+
+Commands that need a server name prompt for one when omitted. All commands also accept direct flags:
+
+```
+python honey.py deploy --server mysql-ssh
+python honey.py connect --server mysql-ssh
+python honey.py connect --server log-stack --pre-setup
+python honey.py redeploy --server mysql-ssh
+python honey.py logs --server mysql-ssh
+python honey.py sync
+python honey.py gen-key --ephemeral
+python honey.py check-keys
+```
+
+Or invoke the scripts directly — same flags, same behavior:
+
+```
+python connect.py --server mysql-ssh
+python redeploy.py --server mysql-ssh
+python get_logs.py --server mysql-ssh
+python sync_ips.py
 ```
 
 ## Adding a honeypot server
