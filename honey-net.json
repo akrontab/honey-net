@@ -10,6 +10,16 @@
     "honeypots": []
   },
   {
+    "name": "malware-catalog",
+    "type": "backend",
+    "terraform_module": "malware_catalog",
+    "terraform_output": "malware_catalog_ip",
+    "ssh_key": "~/.ssh/malware-catalog-linode",
+    "tailscale_ephemeral": false,
+    "ports": [],
+    "honeypots": []
+  },
+  {
     "name": "mysql-ssh",
     "type": "honeypot",
     "terraform_module": "cowrie",
