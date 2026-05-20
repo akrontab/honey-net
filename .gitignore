@@ -1,5 +1,6 @@
 cowrie-honeypot/
 log-stack/
+malware-catalog/
 mysql-honeypot/
 terraform/
 .tailscale-apikey
