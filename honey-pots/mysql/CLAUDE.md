@@ -29,7 +29,7 @@ deploy/
     fragment.sh            # mysql-specific provisioning steps (appended to server-config/setup.sh)
 
 CLAUDE.md                  # this file
-test.ps1                   # MySQL connectivity test
+test.py                    # MySQL connectivity test
 ```
 
 ## Protocol and ports

@@ -5,3 +5,5 @@ terraform/
 .tailscale-apikey
 state.json
 .claude/
+.venv/
+__pycache__/

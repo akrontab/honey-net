@@ -2,10 +2,11 @@ data_dir = "/vector-data"
 
 # ── Sources ───────────────────────────────────────────────────────────
 
-[sources.malware_analysis]
+[sources.malware_events]
 type = "file"
 include = ["/logs/malware/malware-analysis.json"]
 read_from = "beginning"
+fingerprinting.strategy = "device_and_inode"
 
 [sources.cowrie_json]
 type = "file"
@@ -26,7 +27,7 @@ read_from = "beginning"
 
 [sinks.loki_malware]
 type = "loki"
-inputs = ["malware_analysis"]
+inputs = ["malware_events"]
 endpoint = "http://${LOKI_HOST}:3100"
 labels.job = "malware"
 labels.host = "${HOSTNAME}"

@@ -34,7 +34,7 @@ deploy/
     fragment.sh            # cowrie-specific provisioning steps (appended to server-config/setup.sh)
 
 CLAUDE.md                  # this file
-test.ps1                   # SSH connectivity test
+test.py                    # SSH connectivity and container health test
 ```
 
 ## Protocol and ports

@@ -1,7 +1,7 @@
 # server-config — Shared Host Hardening
 
 Configuration applied to every honey-net host at provisioning time. Not a deployable
-component on its own — its files are consumed by `deploy.ps1` when assembling the
+component on its own — its files are consumed by `deploy.py` when assembling the
 deployment package for honeypot servers.
 
 ## Files
@@ -14,9 +14,9 @@ fail2ban-jail.local   # fail2ban protecting port 65022 (4 retries, 1h ban)
 CLAUDE.md             # this file
 ```
 
-## How deploy.ps1 uses these files
+## How deploy.py uses these files
 
-For honeypot servers, `deploy.ps1`:
+For honeypot servers, `deploy.py`:
 1. Copies `sshd_hardening.conf`, `99-hardening.conf`, and `fail2ban-jail.local` to the
    package root alongside `setup.sh`.
 2. Assembles `setup.sh` by concatenating `server-config/setup.sh` with each honeypot's
@@ -63,5 +63,5 @@ defense-in-depth even though no internet traffic should reach the port.
 ## Adding a new honeypot
 
 No changes to these files are needed. Create `honey-pots/<name>/deploy/setup/fragment.sh`
-with honeypot-specific steps (ports, volumes, stack start). `deploy.ps1` appends it
+with honeypot-specific steps (ports, volumes, stack start). `deploy.py` appends it
 automatically.

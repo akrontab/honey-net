@@ -38,13 +38,18 @@ honey-net/                    ← this repo (control plane)
   log-stack/                  ← gitignored, separate repo
   terraform/                  ← gitignored, separate repo
   honey-net.json              ← authored server manifest
-  state.json                  ← gitignored, written by sync-ips.ps1
-  deploy.ps1                  ← first deploy (port 22)
-  redeploy.ps1                ← update a live server (port 65022, Tailscale)
-  connect.ps1                 ← SSH into a server
-  sync-ips.ps1                ← write IPs from terraform + Tailscale to state.json
-  get-logs.ps1                ← pull logs from a honeypot
-  gen-ts-key.ps1              ← generate a Tailscale auth key
+  state.json                  ← gitignored, written by sync_ips.py
+  requirements.txt            ← Python dependencies (requests)
+  setup.ps1                   ← one-time local setup (Windows)
+  setup.sh                    ← one-time local setup (macOS/Linux)
+  honey.py                    ← interactive launcher for all control scripts
+  deploy.py                   ← first deploy (port 22)
+  redeploy.py                 ← update a live server (port 65022, Tailscale)
+  connect.py                  ← SSH into a server
+  sync_ips.py                 ← write IPs from terraform + Tailscale to state.json
+  get_logs.py                 ← pull logs from a honeypot
+  gen_ts_key.py               ← generate a Tailscale auth key
+  _lib.py                     ← shared utilities for all root scripts
 ```
 
 `honey-net.json` is the single source of truth for all servers. All root scripts read from it. See `DESIGN.md` for the full architecture.
@@ -63,22 +68,42 @@ Each component has its own `CLAUDE.md`:
 
 Before deploying any server:
 
-1. **SSH key pair** for each server — path set in `honey-net.json` (`ssh_key` field):
+1. **Python environment** — run once after cloning, before any other script:
+   ```powershell
+   # Windows
+   .\setup.ps1
+   .venv\Scripts\activate
+   ```
+   ```bash
+   # macOS / Linux
+   chmod +x setup.sh
+   ./setup.sh
+   source .venv/bin/activate
+   ```
+   This creates `.venv` and installs `requests`. All `python *.py` commands below
+   assume the venv is active.
+
+   Alternatively, use the interactive launcher for all commands:
+   ```
+   python honey.py
+   ```
+
+2. **SSH key pair** for each server — path set in `honey-net.json` (`ssh_key` field):
    ```powershell
    ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\log-stack-linode"
    ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\mysql-ssh-honeypot"
    ```
 
-2. **Tailscale account** — [tailscale.com](https://tailscale.com). Free tier covers this entire project.
+3. **Tailscale account** — [tailscale.com](https://tailscale.com). Free tier covers this entire project.
    Generate an auth key for each new host before running `setup.sh`:
-   ```powershell
-   .\gen-ts-key.ps1              # backend servers — non-ephemeral (survives reboots)
-   .\gen-ts-key.ps1 -Ephemeral   # honeypot servers — auto-removed from tailnet on destroy
+   ```
+   python gen_ts_key.py              # backend servers — non-ephemeral (survives reboots)
+   python gen_ts_key.py --ephemeral  # honeypot servers — auto-removed from tailnet on destroy
    ```
    First run prompts for a Tailscale **API key** (tailscale.com → Settings → Keys → Generate API key)
    and saves it to `~/.tailscale-apikey`. Subsequent runs print a fresh auth key.
 
-3. **Linode API token** — cloud.linode.com → Profile → API Tokens → Create.
+4. **Linode API token** — cloud.linode.com → Profile → API Tokens → Create.
    Requires Read/Write Linodes and Read Only Events scopes.
 
 ## Provisioning with Terraform
@@ -94,7 +119,7 @@ terraform init
 terraform plan
 terraform apply
 cd ..
-.\sync-ips.ps1    # reads terraform output + Tailscale API, writes state.json
+python sync_ips.py    # reads terraform output + Tailscale API, writes state.json
 ```
 
 To destroy all infrastructure:
@@ -108,7 +133,7 @@ cd terraform && terraform destroy
 2. Generate an SSH key pair for the new server.
 3. If it's a new honeypot type, create `honey-pots/<name>/` with the standard layout.
 4. Run `terraform apply` — the new VM is created automatically.
-5. Run `.\sync-ips.ps1` to add the new server to `state.json`.
+5. Run `python sync_ips.py` to add the new server to `state.json`.
 
 No changes to `terraform/main.tf` are needed.
 
@@ -119,11 +144,11 @@ Deploy log-stack first — its Tailscale IP is required by Vector on every honey
 ### 1. Deploy log-stack
 
 > **Note:** `log-stack/` is a separate git repo (gitignored here). Clone it alongside
-> this repo before running `deploy.ps1`. The root script copies from `log-stack/deploy/`.
+> this repo before running `deploy.py`. The root script copies from `log-stack/deploy/`.
 
-```powershell
-.\deploy.ps1 -Server log-stack
-.\connect.ps1 -Server log-stack -PreSetup   # port 22 via public IP (before setup.sh runs)
+```
+python deploy.py --server log-stack
+python connect.py --server log-stack --pre-setup   # port 22 via public IP (before setup.sh runs)
 ```
 ```bash
 sudo bash /root/log-stack/setup.sh
@@ -137,25 +162,25 @@ Grafana      : http://100.x.x.x:3000
 Loki         : http://100.x.x.x:3100
 ```
 
-**Run `sync-ips.ps1` now** — this captures the log-stack Tailscale IP into `state.json`.
+**Run `sync_ips.py` now** — this captures the log-stack Tailscale IP into `state.json`.
 Honeypot `setup.sh` reads that IP from `state.json` to configure Vector. If you skip this
 step, you will have to set `LOKI_HOST` manually in the honeypot's `.env` after the fact.
 
-```powershell
-.\sync-ips.ps1
+```
+python sync_ips.py
 ```
 
 ### 2. Deploy honeypots
 
 Generate a Tailscale auth key for the honeypot server:
-```powershell
-.\gen-ts-key.ps1 -Ephemeral   # ephemeral — node auto-removes when VM is destroyed
+```
+python gen_ts_key.py --ephemeral   # ephemeral — node auto-removes when VM is destroyed
 ```
 
 Deploy and provision:
-```powershell
-.\deploy.ps1 -Server mysql-ssh   # assembles package (cowrie + mysql), SCPs to server
-.\connect.ps1 -Server mysql-ssh -PreSetup   # port 22 via public IP (before setup.sh runs)
+```
+python deploy.py --server mysql-ssh   # assembles package (cowrie + mysql), SCPs to server
+python connect.py --server mysql-ssh --pre-setup   # port 22 via public IP (before setup.sh runs)
 ```
 ```bash
 sudo bash /root/mysql-ssh/setup.sh
@@ -165,18 +190,18 @@ sudo bash /root/mysql-ssh/setup.sh
 After `setup.sh` completes, port 22 is closed and SSH moves to port 65022 on the
 Tailscale interface only.
 
-Run `sync-ips.ps1` a final time to capture the honeypot's Tailscale IP — needed by
-`redeploy.ps1` and `connect.ps1` going forward:
-```powershell
-.\sync-ips.ps1
+Run `sync_ips.py` a final time to capture the honeypot's Tailscale IP — needed by
+`redeploy.py` and `connect.py` going forward:
+```
+python sync_ips.py
 ```
 
 ### 3. Verify logs are flowing
 
-```powershell
+```
 # Push a test log line to Loki (requires Tailscale running locally)
 cd log-stack
-.\test-loki.ps1
+python test_loki.py
 ```
 
 In Grafana (`http://<tailscale-ip>:3000`):
@@ -187,18 +212,18 @@ In Grafana (`http://<tailscale-ip>:3000`):
 
 ## Re-deploying after changes
 
-```powershell
-.\redeploy.ps1 -Server mysql-ssh   # Tailscale required
-.\redeploy.ps1 -Server log-stack
+```
+python redeploy.py --server mysql-ssh   # Tailscale required
+python redeploy.py --server log-stack
 ```
 
-`redeploy.ps1` copies updated files to the server via Tailscale (port 65022) and runs
-`docker compose up --build -d`. Does not touch system configuration. The `.env` is preserved.
+`redeploy.py` copies updated files to the server via Tailscale (port 65022) and runs
+`docker compose up -d`. Does not touch system configuration. The `.env` is preserved.
 
 ## Pulling logs
 
-```powershell
-.\get-logs.ps1 -Server mysql-ssh   # saves cowrie.json + mysql-honeypot.json to logs/mysql-ssh/
+```
+python get_logs.py --server mysql-ssh   # saves cowrie.json + mysql-honeypot.json to logs/mysql-ssh/
 ```
 
 ## Useful server commands
