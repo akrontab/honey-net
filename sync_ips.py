@@ -6,7 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from _lib import REPO_ROOT, load_manifest, bold
+from lib.color import bold
+from lib.config import REPO_ROOT, load_manifest
 
 def main():
     tf_dir     = REPO_ROOT / "terraform"

@@ -6,7 +6,9 @@ import os
 import subprocess
 import sys
 
-from _lib import DEVNULL, load_manifest, load_state, select_server, ssh_key
+from lib.config import load_manifest, load_state
+from lib.server import select_server
+from lib.ssh import DEVNULL, ssh_key
 
 def main():
     parser = argparse.ArgumentParser(

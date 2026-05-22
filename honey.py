@@ -4,7 +4,7 @@
 import importlib
 import sys
 
-from _lib import _enable_ansi, _c
+from lib.color import _enable_ansi, _c
 
 _enable_ansi()
 
@@ -42,7 +42,8 @@ COMMANDS = [
     ("sync",       "sync_ips",       "Sync IPs from Terraform + Tailscale to state.json", None),
     ("logs",       "get_logs",       "Pull logs from a honeypot server",              None),
     ("gen-key",    "gen_ts_key",     "Generate a Tailscale auth key",                 _gen_key_args),
-    ("check-keys", "check_ssh_keys", "Check SSH keys in honey-net.json; generate missing", None),
+    ("check-keys",  "check_ssh_keys", "Check SSH keys in honey-net.json; generate missing",  None),
+    ("check-logs",  "check_logs",     "Check log stream freshness in Loki",                  None),
 ]
 
 _CMD_MAP = {name: (module, desc, fn) for name, module, desc, fn in COMMANDS}

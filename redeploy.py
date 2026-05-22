@@ -7,13 +7,18 @@ import sys
 import tempfile
 from pathlib import Path
 
-from _lib import DEVNULL, REPO_ROOT, assemble_honeypot_package, copy_tree, load_manifest, load_state, select_server, ssh_key
+from lib.config import REPO_ROOT, load_manifest, load_state
+from lib.files import copy_tree
+from lib.package import assemble_honeypot_package
+from lib.server import select_server
+from lib.ssh import DEVNULL, ssh_key
 
-# Map honeypot type → Docker service name that has a build: context.
+# Map component name → Docker service name that has a build: context.
 # Build images sequentially to avoid concurrent BuildKit builds crashing dockerd.
 BUILD_MAP = {
-    "cowrie": "analyzer",
-    "mysql":  "mysql-honeypot",
+    "mysql":    "mysql-honeypot",
+    "metadata": "metadata",
+    "analyzer": "analyzer",
 }
 
 def main():
@@ -76,14 +81,15 @@ def main():
     rsync_cmd   = (
         f"rsync -a --delete --exclude='.env' --filter='protect */volumes/' "
         f"/root/{name}/ /opt/{name}/ "
-        f"&& chmod -R a+rX /opt/{name}/"
+        f"&& find /opt/{name}/ -not -path '*/volumes/*' -exec chmod a+rX {{}} +"
     )
 
     if server["type"] == "honeypot":
+        all_components = server.get("honeypots", []) + server.get("addons", [])
         build_cmds = " && ".join(
-            f"{compose_cmd} build {BUILD_MAP[hp]}"
-            for hp in server["honeypots"]
-            if hp in BUILD_MAP
+            f"{compose_cmd} build {BUILD_MAP[comp]}"
+            for comp in all_components
+            if comp in BUILD_MAP
         )
         if build_cmds:
             restart_cmd = f"{rsync_cmd} && {build_cmds} && {compose_cmd} up -d"

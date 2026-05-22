@@ -5,7 +5,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-from _lib import bold, green, load_manifest, red, ssh_key, yellow
+from lib.color import bold, green, red, yellow
+from lib.config import load_manifest
+from lib.ssh import ssh_key
 
 
 def check_or_create(raw_path: str) -> None:

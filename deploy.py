@@ -7,7 +7,11 @@ import sys
 import tempfile
 from pathlib import Path
 
-from _lib import DEVNULL, REPO_ROOT, assemble_honeypot_package, copy_tree, load_manifest, load_state, select_server, ssh_key
+from lib.config import REPO_ROOT, load_manifest, load_state
+from lib.files import copy_tree
+from lib.package import assemble_honeypot_package
+from lib.server import select_server
+from lib.ssh import DEVNULL, ssh_key
 
 CONF_FILES = ["sshd_hardening.conf", "99-hardening.conf", "fail2ban-jail.local"]
 
@@ -37,13 +41,20 @@ def stage_honeypot(server, pkg_dir):
     if not base_sh.exists():
         sys.exit("server-config/setup.sh not found")
     setup = base_sh.read_text(encoding="utf-8")
-    for hp in server["honeypots"]:
+    for hp in server.get("honeypots", []):
         fragment = REPO_ROOT / "honey-pots" / hp / "deploy" / "setup" / "fragment.sh"
         if fragment.exists():
             setup += f"\n\n# --- {hp} ---\n"
             setup += fragment.read_text(encoding="utf-8")
         else:
             print(f"  Warning: no fragment.sh for '{hp}' — skipping", file=sys.stderr)
+    for addon in server.get("addons", []):
+        fragment = REPO_ROOT / "addons" / addon / "deploy" / "setup" / "fragment.sh"
+        if fragment.exists():
+            setup += f"\n\n# --- {addon} ---\n"
+            setup += fragment.read_text(encoding="utf-8")
+        else:
+            print(f"  Warning: no fragment.sh for addon '{addon}' — skipping", file=sys.stderr)
     (pkg_dir / "setup.sh").write_text(setup, encoding="utf-8")
 
 def main():

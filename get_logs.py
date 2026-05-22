@@ -6,7 +6,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-from _lib import DEVNULL, REPO_ROOT, load_manifest, load_state, select_server, ssh_key
+from lib.config import REPO_ROOT, load_manifest, load_state
+from lib.server import select_server
+from lib.ssh import DEVNULL, ssh_key
 
 LOG_PATHS = {
     "cowrie": "/opt/{name}/cowrie/volumes/var/log/cowrie/cowrie.json",
