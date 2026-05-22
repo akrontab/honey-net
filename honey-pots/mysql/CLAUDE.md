@@ -31,6 +31,7 @@ deploy/
     protocol.py            # MySQLHoneypot asyncio.Protocol — auth + dispatch
   vector/
     vector.toml            # ships mysql-honeypot.json + host logs to Loki
+  logs.json                # log paths for the metadata addon
   setup/
     fragment.sh            # mysql-specific provisioning steps (appended to server-config/setup.sh)
 

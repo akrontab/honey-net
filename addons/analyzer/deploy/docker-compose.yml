@@ -1,0 +1,25 @@
+services:
+  analyzer:
+    build:
+      context: .
+    container_name: analyzer
+    restart: unless-stopped
+    volumes:
+      - ../inbox:/inbox
+    environment:
+      - CATALOG_URL=${CATALOG_URL}
+      - INBOX_DIR=/inbox
+      - CLEAN_UP=${CLEAN_UP:-true}
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.2'
+    networks:
+      - honeypot
+
+networks:
+  honeypot:
+    driver: bridge

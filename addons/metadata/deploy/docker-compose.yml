@@ -1,0 +1,26 @@
+services:
+  metadata:
+    build:
+      context: .
+    container_name: metadata
+    restart: unless-stopped
+    volumes:
+      - ../inbox:/inbox
+      - ./volumes/state:/state
+    environment:
+      - INBOX_DIR=/inbox
+      - STATE_DIR=/state
+      - SOURCES=${METADATA_SOURCES}
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.1'
+    networks:
+      - honeypot
+
+networks:
+  honeypot:
+    driver: bridge

@@ -4,8 +4,37 @@ WATCH_DIR="/downloads"
 LOG_FILE="/logs/malware-analysis.json"
 RULES_INDEX="/etc/yara/rules/index.yar"
 SEEN_FILE="/logs/.seen-hashes"
+COWRIE_LOG="/logs/cowrie/cowrie.json"
 
 mkdir -p /logs
+
+_catalog_push() {
+    local filepath="$1" sha256="$2" filename="$3"
+    [ -z "${CATALOG_URL:-}" ] && return 0
+
+    local src_ip="unknown" url="" orig_filename="$filename"
+    if [ -f "$COWRIE_LOG" ]; then
+        local match
+        match=$(grep "\"$sha256\"" "$COWRIE_LOG" | tail -1 2>/dev/null || true)
+        if [ -n "$match" ]; then
+            src_ip=$(echo "$match" | jq -r '.src_ip // "unknown"')
+            url=$(echo "$match"    | jq -r '.url    // ""')
+            local url_name
+            url_name=$(echo "$url" | sed 's|.*/||' | tr -dc '[:print:]' | cut -c1-256)
+            orig_filename="${url_name:-$filename}"
+        fi
+    fi
+
+    curl -sf -X POST "${CATALOG_URL}/samples" \
+        -F "file=@${filepath};type=application/octet-stream" \
+        -F "honeypot=${HONEYPOT_HOSTNAME:-cowrie-honeypot}" \
+        -F "src_ip=${src_ip}" \
+        -F "url=${url}" \
+        -F "filename=${orig_filename}" \
+        > /dev/null \
+        && echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] pushed ${filename} to catalog (src=${src_ip})" \
+        || echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] WARNING: failed to push ${filename} to catalog" >&2
+}
 
 analyze_file() {
     local filepath="$1"
@@ -14,6 +43,10 @@ analyze_file() {
 
     local sha256
     sha256=$(sha256sum "$filepath" | awk '{print $1}')
+
+    # Push to catalog on every download — catalog deduplicates by sha256 but
+    # records each submission separately for provenance (src_ip, url, honeypot).
+    _catalog_push "$filepath" "$sha256" "$filename"
 
     if grep -qF "$sha256" "$SEEN_FILE" 2>/dev/null; then
         return

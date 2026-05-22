@@ -1,0 +1,3 @@
+[
+  {"host": "volumes/var/log/cowrie", "container": "/logs/cowrie"}
+]

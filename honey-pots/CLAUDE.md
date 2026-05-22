@@ -14,6 +14,7 @@ honey-pots/<name>/
     <service>/               # Service-specific files (source, config, Dockerfile if built locally)
     vector/
       vector.toml            # Ships logs from this honeypot to Loki
+    logs.json                # Log paths exposed to the metadata addon (optional)
     setup/
       fragment.sh            # Provisioning steps appended to server-config/setup.sh
   CLAUDE.md                  # Documentation: protocol, log paths, event types, gotchas
@@ -199,7 +200,33 @@ echo "[my-honeypot] Starting stack..."
 docker compose up -d
 ```
 
-## 5. test.py
+## 5. logs.json
+
+If the honeypot writes log files that the `metadata` addon should be able to watch,
+declare them in `deploy/logs.json`. The assembler (`assemble_honeypot_package` in
+`_lib.py`) reads this file and automatically adds the corresponding volume mounts
+to the metadata container — no manual edits to the metadata addon's
+`docker-compose.yml` are needed.
+
+```json
+[
+  {"host": "volumes/logs", "container": "/logs/my-honeypot"}
+]
+```
+
+Fields:
+- `host` — path relative to the honeypot's deployed directory (e.g. relative to
+  `/opt/<server>/my-honeypot/`). Point to the directory containing the log file(s).
+- `container` — absolute path inside the metadata container where that directory
+  is mounted. Use `/logs/<honeypot-name>` by convention.
+
+The mount is always added as read-only (`:ro`). Whether the metadata addon actually
+parses the log depends on `METADATA_SOURCES` — `logs.json` just makes the directory
+available.
+
+Omit `logs.json` entirely if the honeypot does not write logs worth cataloging.
+
+## 6. test.py
 
 A smoke test run from the control machine to verify the honeypot is reachable and healthy.
 Use the three-level `sys.path.insert` to reach `_lib.py` at the repo root.
@@ -243,7 +270,7 @@ if __name__ == "__main__":
     main()
 ```
 
-## 6. honey-net.json entry
+## 7. honey-net.json entry
 
 Add an entry under the top-level array. The `"honeypots"` list controls which packages
 `deploy.py` bundles and in what order `fragment.sh` files are concatenated.
@@ -262,7 +289,7 @@ Add an entry under the top-level array. The `"honeypots"` list controls which pa
 `tailscale_ephemeral: true` means the Tailscale node is automatically removed when the VM
 is destroyed — use this for all honeypot servers.
 
-## 7. Control plane updates
+## 8. Control plane updates
 
 Three files in the repo root need updating when a new honeypot type has a locally-built
 Docker image or writes log files.
@@ -274,8 +301,9 @@ add it to `BUILD_MAP` so `redeploy.py` builds it before restarting the stack:
 
 ```python
 BUILD_MAP = {
-    "cowrie":       "analyzer",
     "mysql":        "mysql-honeypot",
+    "metadata":     "metadata",
+    "analyzer":     "analyzer",
     "my-honeypot":  "my-honeypot",   # ← add this
 }
 ```
@@ -304,6 +332,7 @@ LOG_PATHS = {
 - [ ] Create `honey-pots/<name>/test.py`
 - [ ] Add entry to `honey-net.json` (name, type, ssh_key, honeypots, ports, tailscale_ephemeral)
 - [ ] Generate SSH key pair for the server (`ssh_key` path in honey-net.json)
+- [ ] If it writes catalogable log files: create `deploy/logs.json`
 - [ ] If locally built image: add to `BUILD_MAP` in `redeploy.py`
 - [ ] If it writes log files: add to `LOG_PATHS` in `get_logs.py`
 - [ ] Run `terraform apply` to create the VM

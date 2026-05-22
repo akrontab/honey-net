@@ -11,6 +11,7 @@ services:
       - ./cowrie/honeyfs:/cowrie/cowrie-git/src/cowrie/data/honeyfs:ro
       - ./cowrie/txtcmds:/cowrie/cowrie-git/share/cowrie/txtcmds:ro
       - ./volumes/var:/cowrie/cowrie-git/var
+      - ../inbox:/inbox
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -32,33 +33,14 @@ services:
       - /var/log:/hostlogs:ro
       - ./vector/vector.toml:/etc/vector/vector.toml:ro
       - vector-data:/vector-data
-      - analyzer-logs:/logs/malware:ro
     environment:
       - LOKI_HOST=${LOKI_HOST}
       - HOSTNAME=${HONEYPOT_HOSTNAME:-cowrie-honeypot}
     networks:
       - honeypot
 
-  analyzer:
-    build:
-      context: ./analyzer
-    container_name: analyzer
-    restart: unless-stopped
-    volumes:
-      - ./volumes/var/lib/cowrie/downloads:/downloads:ro
-      - analyzer-logs:/logs
-      - ./analyzer/rules:/etc/yara/rules:ro
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-          cpus: '0.2'
-    networks:
-      - honeypot
-
 volumes:
   vector-data:
-  analyzer-logs:
 
 networks:
   honeypot:

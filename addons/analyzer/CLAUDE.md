@@ -1,0 +1,45 @@
+# analyzer addon
+
+Polls the shared inbox for `.meta.json` sidecars and submits each sample + metadata
+to the malware catalog via `POST /samples`.
+
+## Responsibility
+
+Single responsibility: deliver samples from the inbox to the catalog. It knows nothing
+about honeypot log formats (that's the metadata addon's job) and runs no analysis
+itself (that's the catalog's job).
+
+## Submission flow
+
+1. Poll `INBOX_DIR` for `*.meta.json` files every `POLL_SECS` seconds
+2. For each sidecar, look for the matching binary (`{sha256}` in the same directory)
+3. POST binary + metadata fields to `CATALOG_URL/samples`
+4. On success: delete both files if `CLEAN_UP=true` (default)
+5. On catalog unreachable: stop the current poll cycle, retry next interval
+6. On missing binary: skip permanently (added to in-process skip set)
+
+## Configuration
+
+| Env var | Default | Description |
+|---------|---------|-------------|
+| `CATALOG_URL` | (required) | Base URL of the malware catalog |
+| `INBOX_DIR` | `/inbox` | Directory to poll for sidecars |
+| `POLL_SECS` | `2` | Polling interval in seconds |
+| `CLEAN_UP` | `true` | Delete files from inbox after successful submission |
+
+## Volume mounts (in docker-compose.yml)
+
+| Container path | Host path | Purpose |
+|----------------|-----------|---------|
+| `/inbox` | `../inbox` | Read sidecars + binaries; delete after submission |
+
+## Gotchas
+
+### Skip set resets on container restart
+The in-process skip set (for permanently-skipped sidecars with missing binaries) is
+not persisted. A restart will re-attempt skipped files once. This is harmless — the
+catalog handles duplicates, and missing-binary files will just be skipped again.
+
+### Catalog must be reachable over Tailscale
+`CATALOG_URL` should be the malware-catalog's Tailscale IP. The honeypot host must
+have Tailscale running for this to work.

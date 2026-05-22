@@ -1,0 +1,101 @@
+"""
+Analyzer — polls the shared inbox for .meta.json sidecars and submits
+each sample + metadata to the malware catalog.
+
+Configured via env vars:
+  CATALOG_URL   Base URL of the malware catalog (required)
+  INBOX_DIR     Directory to watch for sidecars (default /inbox)
+  POLL_SECS     How often to scan the inbox (default 2)
+  CLEAN_UP      Delete binary + sidecar after successful submission (default true)
+"""
+
+import json
+import os
+import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+try:
+    import requests
+except ImportError:
+    sys.exit("requests not installed")
+
+CATALOG_URL = os.getenv("CATALOG_URL", "").rstrip("/")
+INBOX_DIR   = Path(os.getenv("INBOX_DIR", "/inbox"))
+POLL_SECS   = int(os.getenv("POLL_SECS", "2"))
+CLEAN_UP    = os.getenv("CLEAN_UP", "true").lower() == "true"
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _submit(sidecar_path: Path, no_binary: set) -> bool:
+    """Submit one sample. Returns True on success, False on transient failure.
+    Adds to no_binary and returns True (skip) if the binary file is missing.
+    """
+    meta   = json.loads(sidecar_path.read_text(encoding="utf-8"))
+    sha256 = meta.get("sha256", sidecar_path.stem)
+    binary = INBOX_DIR / sha256
+
+    if not binary.exists():
+        print(f"[{_now()}] WARNING binary missing for {sha256[:12]} — skipping", flush=True)
+        no_binary.add(sidecar_path.name)
+        return True
+
+    with binary.open("rb") as fh:
+        r = requests.post(
+            f"{CATALOG_URL}/samples",
+            files={"file": (meta.get("filename", sha256), fh, "application/octet-stream")},
+            data={
+                "honeypot": meta.get("honeypot", "unknown"),
+                "src_ip":   meta.get("src_ip",   "unknown"),
+                "url":      meta.get("url",       ""),
+                "filename": meta.get("filename",  sha256),
+            },
+            timeout=30,
+        )
+    r.raise_for_status()
+
+    result = r.json()
+    print(
+        f"[{_now()}] submitted {sha256[:12]}"
+        f"  new={result.get('new')}"
+        f"  src={meta.get('src_ip')}",
+        flush=True,
+    )
+
+    if CLEAN_UP:
+        sidecar_path.unlink(missing_ok=True)
+        binary.unlink(missing_ok=True)
+
+    return True
+
+
+def main() -> None:
+    if not CATALOG_URL:
+        sys.exit("CATALOG_URL env var is required")
+
+    INBOX_DIR.mkdir(parents=True, exist_ok=True)
+    print(f"[{_now()}] analyzer started  inbox={INBOX_DIR}  catalog={CATALOG_URL}", flush=True)
+
+    no_binary: set = set()
+
+    while True:
+        for sidecar in sorted(INBOX_DIR.glob("*.meta.json")):
+            if sidecar.name in no_binary:
+                continue
+            try:
+                _submit(sidecar, no_binary)
+            except requests.exceptions.RequestException as exc:
+                print(f"[{_now()}] catalog unreachable: {exc} — will retry", flush=True)
+                break
+            except Exception as exc:
+                print(f"[{_now()}] ERROR {sidecar.name}: {exc}", flush=True)
+                no_binary.add(sidecar.name)
+        time.sleep(POLL_SECS)
+
+
+if __name__ == "__main__":
+    main()
