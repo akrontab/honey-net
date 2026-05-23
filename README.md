@@ -95,8 +95,8 @@ honey-net/
     cowrie/          ← SSH/Telnet honeypot package
     mysql/           ← MySQL wire-protocol honeypot package
   server-config/     ← shared host hardening (UFW, SSH, fail2ban)
-  log-stack/         ← gitignored, separate repo
-  terraform/         ← gitignored, separate repo
+  log-stack/         ← Grafana + Loki stack
+  terraform/         ← infrastructure-as-code
   honey-net.json     ← server manifest (single source of truth)
   state.json         ← gitignored, written by sync_ips.py
   honey.py           ← interactive launcher for all commands

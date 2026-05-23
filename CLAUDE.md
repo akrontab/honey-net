@@ -38,8 +38,8 @@ honey-net/                    ← this repo (control plane)
     metadata/                 ← metadata extractor addon (log → inbox sidecars)
     analyzer/                 ← analyzer addon (inbox → malware catalog)
   server-config/              ← shared host hardening
-  log-stack/                  ← gitignored, separate repo
-  terraform/                  ← gitignored, separate repo
+  log-stack/                  ← Grafana + Loki stack
+  terraform/                  ← infrastructure-as-code
   honey-net.json              ← authored server manifest
   state.json                  ← gitignored, written by sync_ips.py
   requirements.txt            ← Python dependencies (requests)
@@ -148,9 +148,6 @@ No changes to `terraform/main.tf` are needed.
 Deploy log-stack first — its Tailscale IP is required by Vector on every honeypot.
 
 ### 1. Deploy log-stack
-
-> **Note:** `log-stack/` is a separate git repo (gitignored here). Clone it alongside
-> this repo before running `deploy.py`. The root script copies from `log-stack/deploy/`.
 
 ```
 python deploy.py --server log-stack

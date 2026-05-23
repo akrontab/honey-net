@@ -1,10 +1,6 @@
-cowrie-honeypot/
-log-stack/
-malware-catalog/
-mysql-honeypot/
-terraform/
 .tailscale-apikey
 state.json
+logs/
 .claude/
 .venv/
 __pycache__/

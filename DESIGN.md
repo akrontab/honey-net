@@ -29,7 +29,7 @@ Each section describes a major component or a class of components that make up H
 
 The honey-net root is the control plane for the entire network. All deployment, connection, and IP management operations run from here. Individual honeypot folders are service packages — they contain Docker config and documentation but have no knowledge of servers or IPs.
 
-The repo does not use git submodules to keep the git workflow simple. Each honeypot folder has its own git repo.
+Everything lives in a single git repo. Honeypot packages, addons, log-stack, and Terraform are all subdirectories of honey-net — no submodules, no separate repos.
 
 ```
 honey-net/
