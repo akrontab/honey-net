@@ -167,6 +167,7 @@ ufw allow in on tailscale0 to any port "${REAL_SSH_PORT}" comment 'real SSH — 
 cat > "${DEPLOY_DIR}/.env" <<EOF
 LOKI_HOST=${LOKI_HOST}
 HONEYPOT_HOSTNAME=${HONEYPOT_HOSTNAME}
+CATALOG_URL=${CATALOG_URL:-}
 EOF
 chmod 600 "${DEPLOY_DIR}/.env"
 

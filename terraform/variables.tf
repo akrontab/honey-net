@@ -7,5 +7,5 @@ variable "linode_token" {
 variable "region" {
   description = "Linode region for all hosts (e.g. us-east, eu-west, ap-south)"
   type        = string
-  default     = "us-east"
+  default     = "us-central"
 }

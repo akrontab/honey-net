@@ -6,4 +6,4 @@
 linode_token = "your-linode-api-token"
 
 # Region — see https://api.linode.com/v4/regions
-region = "us-east"
+region = "us-central"
