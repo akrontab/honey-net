@@ -83,7 +83,8 @@ def _write_merged_vector_toml(path, sources, sinks):
     for name, fields in sinks.items():
         lines += ["", f"[sinks.{name}]"]
         _write_toml_block(lines, f"sinks.{name}", fields)
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    with path.open("w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(lines) + "\n")
 
 
 # ── Assembly steps ────────────────────────────────────────────────────────────
@@ -108,10 +109,8 @@ def _stage_component(name, base, pkg_dir):
     # vector-data is owned by the top-level compose
     compose.get("volumes", {}).pop("vector-data", None)
 
-    compose_path.write_text(
-        yaml.safe_dump(compose, default_flow_style=False, sort_keys=False),
-        encoding="utf-8",
-    )
+    with compose_path.open("w", encoding="utf-8", newline="\n") as f:
+        f.write(yaml.safe_dump(compose, default_flow_style=False, sort_keys=False))
     return mounts
 
 
@@ -132,10 +131,8 @@ def _inject_inbox_mounts(components, pkg_dir):
             compose["services"][hp_name].setdefault("volumes", []).append(
                 f"../inbox:{container_path}"
             )
-            compose_path.write_text(
-                yaml.safe_dump(compose, default_flow_style=False, sort_keys=False),
-                encoding="utf-8",
-            )
+            with compose_path.open("w", encoding="utf-8", newline="\n") as f:
+                f.write(yaml.safe_dump(compose, default_flow_style=False, sort_keys=False))
 
 
 def _write_vector_config(all_names, pkg_dir):
@@ -180,7 +177,8 @@ def _write_root_compose(all_names, vector_mounts, pkg_dir):
         "volumes:\n"
         "  vector-data:\n"
     )
-    (pkg_dir / "docker-compose.yml").write_text(compose_text, encoding="utf-8")
+    with (pkg_dir / "docker-compose.yml").open("w", encoding="utf-8", newline="\n") as f:
+        f.write(compose_text)
 
 
 # ── Public API ────────────────────────────────────────────────────────────────

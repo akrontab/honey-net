@@ -55,7 +55,8 @@ def stage_honeypot(server, pkg_dir):
             setup += fragment.read_text(encoding="utf-8")
         else:
             print(f"  Warning: no fragment.sh for addon '{addon}' — skipping", file=sys.stderr)
-    (pkg_dir / "setup.sh").write_text(setup, encoding="utf-8")
+    with (pkg_dir / "setup.sh").open("w", encoding="utf-8", newline="\n") as f:
+        f.write(setup)
 
 def main():
     parser = argparse.ArgumentParser(

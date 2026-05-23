@@ -177,4 +177,9 @@ if [[ -z "${LOKI_HOST}" ]]; then
   echo "  edit ${DEPLOY_DIR}/.env and run: docker compose -f ${DEPLOY_DIR}/docker-compose.yml up -d"
 fi
 
+# Restart Docker to restore its NAT/MASQUERADE iptables rules after Tailscale
+# joined and UFW rules were modified above — ensures RUN steps in fragment builds
+# (pip install, apt-get, etc.) can reach the internet via the container network.
+systemctl restart docker
+
 # ── Honeypot fragment continues below ───────────────────────────────
