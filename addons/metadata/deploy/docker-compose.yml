@@ -6,10 +6,8 @@ services:
     restart: unless-stopped
     volumes:
       - ../inbox:/inbox
-      - ./volumes/state:/state
     environment:
       - INBOX_DIR=/inbox
-      - STATE_DIR=/state
     security_opt:
       - no-new-privileges:true
     deploy:

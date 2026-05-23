@@ -1,137 +1,101 @@
 """
-Metadata extractor — tails honeypot event logs and writes {sha256}.meta.json
-sidecars to the shared inbox so the malware-sender can submit samples to the catalog.
+Metadata extractor — watches the shared inbox for new malware samples and writes
+{sha256}.meta.json sidecars consumed by malware-sender.
+
+Honeypots drop downloaded binaries into the inbox named by their SHA-256 digest.
+This service detects new arrivals, verifies each file's hash, identifies the file
+type from magic bytes, and writes a sidecar without touching any log format.
 
 Configured via env vars:
-  SOURCES     JSON array of {format, log}. Supported formats: cowrie_jsonl
-  INBOX_DIR   Where to write .meta.json files (default /inbox)
-  STATE_DIR   Where to persist log offsets across restarts (default /state)
-  POLL_SECS   How often to check for new log lines (default 2)
+  INBOX_DIR   Directory to watch for new samples (default /inbox)
+  POLL_SECS   How often to scan for new files (default 2)
 """
 
+import hashlib
 import json
 import os
-import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 INBOX_DIR = Path(os.getenv("INBOX_DIR", "/inbox"))
-STATE_DIR = Path(os.getenv("STATE_DIR", "/state"))
 POLL_SECS = int(os.getenv("POLL_SECS", "2"))
-SOURCES   = json.loads(os.getenv("SOURCES", "[]"))
+
+_SHA256_CHARS = frozenset("0123456789abcdef")
+
+_MAGIC_TYPES: list[tuple[bytes, str]] = [
+    (b"\x7fELF",           "elf"),
+    (b"MZ",                "pe"),
+    (b"\xca\xfe\xba\xbe", "macho"),
+    (b"\xce\xfa\xed\xfe", "macho"),
+    (b"\xcf\xfa\xed\xfe", "macho"),
+]
 
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _filename_from_url(url: str, fallback: str) -> str:
-    if url:
-        part = url.rstrip("/").rsplit("/", 1)[-1]
-        if part and "." in part:
-            return part
-    return fallback
+def _is_sha256_name(name: str) -> bool:
+    return len(name) == 64 and all(c in _SHA256_CHARS for c in name)
 
 
-def _write_sidecar(sha256: str, src_ip: str, url: str, filename: str, timestamp: str) -> None:
-    path = INBOX_DIR / f"{sha256}.meta.json"
-    if path.exists():
+def _filetype(header: bytes) -> str:
+    for magic, label in _MAGIC_TYPES:
+        if header[: len(magic)] == magic:
+            return label
+    return "data"
+
+
+def _read_file(path: Path) -> tuple[bytes, str, int]:
+    """Return (first 4 bytes, sha256 hex, file size) in one pass."""
+    h = hashlib.sha256()
+    header = b""
+    size = 0
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            if not header:
+                header = chunk[:4]
+            h.update(chunk)
+            size += len(chunk)
+    return header, h.hexdigest(), size
+
+
+def _write_sidecar(path: Path) -> None:
+    sha256  = path.name
+    sidecar = INBOX_DIR / f"{sha256}.meta.json"
+    if sidecar.exists():
         return
-    path.write_text(json.dumps({
-        "sha256":    sha256,
-        "src_ip":    src_ip,
-        "url":       url,
-        "filename":  filename,
-        "timestamp": timestamp,
-    }), encoding="utf-8")
-    print(f"[{_now()}] sidecar  {sha256[:12]}  src={src_ip}  url={url}", flush=True)
 
+    header, actual, size = _read_file(path)
+    if actual != sha256:
+        return  # file still being written — retry next poll
 
-# ── Format parsers ────────────────────────────────────────────────────────────
-
-def _parse_cowrie_jsonl(line: str) -> None:
-    try:
-        ev = json.loads(line)
-    except json.JSONDecodeError:
-        return
-    if ev.get("eventid") != "cowrie.session.file_download":
-        return
-    sha256 = ev.get("shasum", "")
-    if not sha256:
-        return
-    url      = ev.get("url", "")
-    src_ip   = ev.get("src_ip", "unknown")
-    ts       = ev.get("timestamp", _now())
-    filename = _filename_from_url(url, sha256)
-    _write_sidecar(sha256, src_ip, url, filename, ts)
-
-
-PARSERS: dict = {
-    "cowrie_jsonl": _parse_cowrie_jsonl,
-}
-
-
-# ── Log tailer ────────────────────────────────────────────────────────────────
-
-class LogTailer:
-    def __init__(self, log_path: Path, fmt: str, state_path: Path):
-        self.log_path   = log_path
-        self.parse      = PARSERS[fmt]
-        self.state_path = state_path
-        self.offset     = self._load_offset()
-
-    def _load_offset(self) -> int:
-        try:
-            return int(self.state_path.read_text().strip())
-        except (FileNotFoundError, ValueError):
-            return 0
-
-    def _save_offset(self) -> None:
-        self.state_path.write_text(str(self.offset))
-
-    def poll(self) -> None:
-        if not self.log_path.exists():
-            return
-        with self.log_path.open("r", encoding="utf-8", errors="replace") as f:
-            f.seek(self.offset)
-            for line in f:
-                stripped = line.strip()
-                if stripped:
-                    self.parse(stripped)
-            self.offset = f.tell()
-        self._save_offset()
+    ftype = _filetype(header)
+    sidecar.write_text(
+        json.dumps({
+            "sha256":    sha256,
+            "size":      size,
+            "filetype":  ftype,
+            "timestamp": _now(),
+        }),
+        encoding="utf-8",
+    )
+    print(f"[{_now()}] sidecar  {sha256[:12]}  size={size}  type={ftype}", flush=True)
 
 
 def main() -> None:
-    if not SOURCES:
-        sys.exit("SOURCES env var is empty — nothing to watch")
-
     INBOX_DIR.mkdir(parents=True, exist_ok=True)
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-
-    tailers = []
-    for i, src in enumerate(SOURCES):
-        fmt      = src.get("format", "")
-        log_file = src.get("log", "")
-
-        if fmt not in PARSERS:
-            sys.exit(f"Unknown format '{fmt}' for source {i} — supported: {list(PARSERS)}")
-        if not log_file:
-            sys.exit(f"Missing 'log' field in source {i}")
-
-        tailers.append(LogTailer(
-            log_path   = Path(log_file),
-            fmt        = fmt,
-            state_path = STATE_DIR / f"offset-{i}.txt",
-        ))
-        print(f"[{_now()}] watching  {log_file}  format={fmt}", flush=True)
-
     print(f"[{_now()}] metadata extractor started  inbox={INBOX_DIR}", flush=True)
 
     while True:
-        for t in tailers:
-            t.poll()
+        for path in INBOX_DIR.iterdir():
+            if not path.is_file() or not _is_sha256_name(path.name):
+                continue
+            try:
+                _write_sidecar(path)
+            except OSError as exc:
+                print(f"[{_now()}] skip {path.name[:12]}: {exc}", flush=True)
         time.sleep(POLL_SECS)
 
 

@@ -46,7 +46,7 @@ addons/<name>/
 
 | Addon | Purpose |
 |-------|---------|
-| `metadata` | Tails honeypot event logs; writes `{sha256}.meta.json` sidecars to the shared inbox |
+| `metadata` | Watches the inbox for new binary samples; writes `{sha256}.meta.json` sidecars |
 | `malware-sender` | Polls inbox for complete sidecars; submits samples to the malware catalog |
 
 ## Shared inbox

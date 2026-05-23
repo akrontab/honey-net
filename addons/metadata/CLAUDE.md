@@ -1,71 +1,54 @@
 # metadata addon
 
-Tails honeypot event logs and writes `{sha256}.meta.json` sidecars to the shared
-inbox. The malware-sender addon reads these sidecars to submit samples to the malware catalog.
+Watches the shared inbox for new malware samples and writes `{sha256}.meta.json`
+sidecars. The malware-sender addon reads these sidecars to submit samples to the
+malware catalog.
 
 ## Responsibility
 
-Single responsibility: translate honeypot-specific event log entries into a standard
-metadata file that any downstream consumer can read without knowing the log format.
+Single responsibility: for each binary that lands in the inbox, verify its SHA-256
+hash (the filename), detect its file type from magic bytes, and write a sidecar.
+No log parsing, no knowledge of any honeypot's log format.
+
+## How it works
+
+1. Poll `INBOX_DIR` every `POLL_SECS` seconds
+2. For each file whose name is a 64-character hex string (SHA-256) with no matching sidecar:
+   - Read the file in one pass: capture the first 4 bytes for magic-byte detection and compute SHA-256
+   - If the computed hash doesn't match the filename the file is still being written — skip and retry next poll
+   - Write `{sha256}.meta.json`
 
 ## Sidecar schema
 
 ```json
 {
   "sha256":    "abc123...",
-  "src_ip":    "1.2.3.4",
-  "url":       "http://attacker.com/malware.sh",
-  "filename":  "malware.sh",
+  "size":      12345,
+  "filetype":  "elf",
   "timestamp": "2026-05-19T12:00:00+00:00"
 }
 ```
 
-## Log offset tracking
+## Detected file types
 
-The service records its byte offset in each log file under `/state/offset-{n}.txt`.
-On restart it resumes from where it left off, so no events are missed or double-processed.
+| Magic bytes | `filetype` |
+|-------------|------------|
+| `\x7fELF`   | `elf`      |
+| `MZ`        | `pe`       |
+| Mach-O fat/32/64 | `macho` |
+| (anything else) | `data` |
 
 ## Configuration
 
 | Env var | Default | Description |
 |---------|---------|-------------|
-| `SOURCES` | (injected by assembler) | JSON array of `{format, log}` — auto-generated from each honeypot's `logs.json` |
-| `INBOX_DIR` | `/inbox` | Where to write `.meta.json` files |
-| `STATE_DIR` | `/state` | Where to persist log offsets |
+| `INBOX_DIR` | `/inbox` | Where to watch for samples and write `.meta.json` files |
 | `POLL_SECS` | `2` | Polling interval in seconds |
-
-`SOURCES` is never set manually. The assembler reads each honeypot's `logs.json` for entries
-with a `format` field and injects the resulting JSON array into the assembled docker-compose.
-
-## Supported formats
-
-| Format key | Event watched |
-|------------|---------------|
-| `cowrie_jsonl` | `cowrie.session.file_download` |
 
 ## Volume mounts (in docker-compose.yml)
 
 | Container path | Host path | Purpose |
 |----------------|-----------|---------|
-| `/inbox` | `../inbox` | Write `.meta.json` sidecars |
-| `/state` | `./volumes/state` | Persist log offsets |
+| `/inbox` | `../inbox` | Watch for binaries; write `.meta.json` sidecars |
 
-Log mounts (e.g. `/logs/cowrie`) are injected at assemble time from each honeypot's
-`logs.json`. See `honey-pots/CLAUDE.md` § 5 for the convention.
-
-## Adding a new format
-
-Add a parser to `metadata.py` and register it in `PARSERS`:
-
-```python
-def _parse_my_format(line: str) -> None:
-    ev = json.loads(line)
-    if ev.get("type") != "download":
-        return
-    _write_sidecar(ev["hash"], ev["ip"], ev["url"], ev["name"], ev["ts"])
-
-PARSERS["my_format"] = _parse_my_format
-```
-
-Then add `"format": "my_format"` to the relevant entry in the honeypot's `logs.json`.
-The assembler picks it up automatically — no `.env` changes needed.
+The inbox is the only mount — no log directories are needed.
