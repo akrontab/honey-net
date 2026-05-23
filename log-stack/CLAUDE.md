@@ -20,19 +20,19 @@ deploy/                        # Everything that goes to the server
     99-loki-hardening.conf     # sysctl kernel hardening
     fail2ban-jail.local        # fail2ban protecting port 65022
 
-_lib.py                        # Shared utilities (reads honey-net.json / state.json from parent)
-connect.py                     # SSH into the server
-deploy.py                      # Copy deploy/ to server via scp
-test_loki.py                   # Push a test log line to verify Tailscale + Loki + Grafana
+_lib.py                        # Legacy shared utilities (used by connect.py/deploy.py below)
+connect.py                     # Legacy — use root connect.py --server log-stack instead
+deploy.py                      # Legacy — use root deploy.py / redeploy.py instead
+test_loki.py                   # Legacy — use root test_loki.py instead
 ```
 
 ## Deployment
 
 - Target: Linode Nanode (1 vCPU, 1GB RAM), Ubuntu 24.04 LTS
 - SSH key: `~/.ssh/log-stack-linode`
-- Deploy: `python deploy.py` (copies `deploy/` to `/root/log-stack/` on the server)
+- Deploy: `python deploy.py --server log-stack` (from repo root, port 22, before setup.sh)
 - Provision: `sudo bash /root/log-stack/setup/setup.sh` on the server
-- Connect: `python connect.py`
+- Connect: `python connect.py --server log-stack` (from repo root)
 
 Real SSH runs on port **65022**. Port 22 is closed by UFW after setup.
 
@@ -77,10 +77,10 @@ Useful LogQL queries:
 
 ## Testing the stack
 
-Run from your local machine (Tailscale must be active):
+Run from the repo root (Tailscale must be active):
 
 ```
-python test_loki.py                       # auto-detects log-stack Tailscale IP from state.json
+python test_loki.py                          # auto-detects log-stack Tailscale IP from state.json
 python test_loki.py --loki-host 100.x.x.x   # or pass it directly
 ```
 
@@ -93,16 +93,12 @@ On failure it prints a checklist: local Tailscale status, reachability to the ho
 
 ## Re-deploying after changes
 
+From the repo root:
 ```
-python deploy.py --post-setup      # Uses port 65022, excludes .env
-```
-
-Then on the server:
-```bash
-sudo bash /root/log-stack/setup/setup.sh --redeploy
+python redeploy.py --server log-stack   # Uses port 65022 via Tailscale, excludes .env
 ```
 
-`--redeploy` skips all system provisioning and just syncs files from `/root/log-stack/` to `/opt/log-stack/`, then runs `docker compose up -d`. The `.env` is preserved because `deploy.py` excludes it.
+`redeploy.py` rsyncs files from `/root/log-stack/` to `/opt/log-stack/` and runs `docker compose up -d`. The `.env` is preserved.
 
 ## Useful server commands
 

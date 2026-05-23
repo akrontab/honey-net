@@ -45,6 +45,8 @@ COMMANDS = [
     ("gen-key",    "gen_ts_key",     "Generate a Tailscale auth key",                 _gen_key_args),
     ("check-keys",  "check_ssh_keys", "Check SSH keys in honey-net.json; generate missing",  None),
     ("check-logs",  "check_logs",     "Check log stream freshness in Loki",                  None),
+    ("test-loki",   "test_loki",      "Push a test log to Loki to verify the stack",         None),
+    ("test",        "test_honeypot",  "Run smoke tests for a honeypot from this machine",     None),
 ]
 
 _CMD_MAP = {name: (module, desc, fn) for name, module, desc, fn in COMMANDS}

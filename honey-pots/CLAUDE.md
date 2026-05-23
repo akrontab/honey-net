@@ -204,7 +204,7 @@ docker compose up -d
 
 If the honeypot writes log files that the `metadata` addon should be able to watch,
 declare them in `deploy/logs.json`. The assembler (`assemble_honeypot_package` in
-`_lib.py`) reads this file and automatically adds the corresponding volume mounts
+`lib/package.py`) reads this file and automatically adds the corresponding volume mounts
 to the metadata container — no manual edits to the metadata addon's
 `docker-compose.yml` are needed.
 
@@ -238,7 +238,13 @@ Omit `logs.json` entirely if the honeypot does not write logs or binaries worth 
 ## 6. test.py
 
 A smoke test run from the control machine to verify the honeypot is reachable and healthy.
-Use the three-level `sys.path.insert` to reach `_lib.py` at the repo root.
+Use the three-level `sys.path.insert` to reach `_lib.py` at the repo root. Can be run
+directly or via the launchers:
+
+```
+python honey-pots/<name>/test.py   # direct
+python test_honeypot.py <name>     # via root helper (also accessible as `python honey.py test`)
+```
 
 ```python
 #!/usr/bin/env python3
@@ -324,5 +330,5 @@ reads everything it needs from the package at runtime:
 - [ ] Run `python deploy.py --server <name>` to upload the package
 - [ ] SSH in (`python connect.py --server <name> --pre-setup`) and run `sudo bash /root/<name>/setup.sh`
 - [ ] Run `python sync_ips.py` again to capture the Tailscale IP
-- [ ] Run `python honey-pots/<name>/test.py` to verify
+- [ ] Run `python test_honeypot.py <name>` to verify (or `python honey.py test`)
 - [ ] Add a Grafana dashboard to `log-stack/deploy/grafana/provisioning/dashboards/`

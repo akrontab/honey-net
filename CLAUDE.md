@@ -46,13 +46,19 @@ honey-net/                    ← this repo (control plane)
   setup.ps1                   ← one-time local setup (Windows)
   setup.sh                    ← one-time local setup (macOS/Linux)
   honey.py                    ← interactive launcher for all control scripts
+  provision.py                ← end-to-end provisioning (terraform + server setup)
   deploy.py                   ← first deploy (port 22)
   redeploy.py                 ← update a live server (port 65022, Tailscale)
   connect.py                  ← SSH into a server
   sync_ips.py                 ← write IPs from terraform + Tailscale to state.json
   get_logs.py                 ← pull logs from a honeypot
   gen_ts_key.py               ← generate a Tailscale auth key
-  _lib.py                     ← shared utilities for all root scripts
+  check_ssh_keys.py           ← check / generate SSH keys for all servers
+  check_logs.py               ← check log stream freshness in Loki
+  test_loki.py                ← push a test log to Loki to verify the stack
+  test_honeypot.py            ← run smoke tests for a honeypot type
+  lib/                        ← shared library (config, ssh, color, package, server, files)
+  _lib.py                     ← backward-compat re-export shim for honey-pots/*/test.py
 ```
 
 `honey-net.json` is the single source of truth for all servers. All root scripts read from it. See `DESIGN.md` for the full architecture.
@@ -203,7 +209,6 @@ python sync_ips.py
 
 ```
 # Push a test log line to Loki (requires Tailscale running locally)
-cd log-stack
 python test_loki.py
 ```
 
