@@ -10,7 +10,6 @@ services:
     environment:
       - INBOX_DIR=/inbox
       - STATE_DIR=/state
-      - SOURCES=${METADATA_SOURCES}
     security_opt:
       - no-new-privileges:true
     deploy:

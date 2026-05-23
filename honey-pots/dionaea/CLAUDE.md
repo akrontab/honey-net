@@ -106,6 +106,6 @@ Port 445 attracts constant automated probes. Log files grow quickly.
 Monitor disk: `df -h /opt/<server>/dionaea/volumes`
 
 ### Downloaded binaries
-Dionaea saves attacker-transferred files to `volumes/binaries/` without the metadata/analyzer
+Dionaea saves attacker-transferred files to `volumes/binaries/` without the metadata/malware-sender
 pipeline (those addons are Cowrie-specific). To scan downloaded files, copy them off the
 server and run YARA manually, or submit to a sandbox.

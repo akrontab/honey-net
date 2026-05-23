@@ -125,15 +125,15 @@ Unlike Cowrie (pre-built image), this stack requires building the Python image o
 `redeploy.py` builds it explicitly before restarting.
 
 ### Never run docker compose up --build on the combined stack
-The combined compose file includes two services with `build:` contexts: `analyzer`
-(cowrie) and `mysql-honeypot`. Running `docker compose up --build` on the top-level
+The combined compose file includes two services with `build:` contexts: `malware-sender`
+and `mysql-honeypot`. Running `docker compose up --build` on the top-level
 compose starts both builds concurrently, which crashes dockerd with BuildKit error:
 `"session healthcheck failed fatally: only one connection allowed"`. This triggers
 the systemd restart loop and hits the start-limit.
 
 Build images explicitly in sequence instead:
 ```bash
-docker compose build analyzer
+docker compose build malware-sender
 docker compose build mysql-honeypot
 docker compose up -d
 ```

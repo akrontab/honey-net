@@ -1,3 +1,4 @@
 [
-  {"host": "volumes/var/log/cowrie", "container": "/logs/cowrie", "log_file": "cowrie.json"}
+  {"host": "volumes/var/log/cowrie", "container": "/logs/cowrie", "log_file": "cowrie.json", "format": "cowrie_jsonl"},
+  {"container": "/downloads", "downloads": true}
 ]

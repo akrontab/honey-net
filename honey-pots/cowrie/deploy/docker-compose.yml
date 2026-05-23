@@ -11,7 +11,6 @@ services:
       - ./cowrie/honeyfs:/cowrie/cowrie-git/src/cowrie/data/honeyfs:ro
       - ./cowrie/txtcmds:/cowrie/cowrie-git/share/cowrie/txtcmds:ro
       - ./volumes/var:/cowrie/cowrie-git/var
-      - ../inbox:/inbox
     security_opt:
       - no-new-privileges:true
     deploy:

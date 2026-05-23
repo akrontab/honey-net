@@ -36,7 +36,7 @@ honey-net/                    ← this repo (control plane)
     mysql/                    ← mysql honeypot package
   addons/
     metadata/                 ← metadata extractor addon (log → inbox sidecars)
-    analyzer/                 ← analyzer addon (inbox → malware catalog)
+    malware-sender/           ← malware-sender addon (inbox → malware catalog)
   server-config/              ← shared host hardening
   log-stack/                  ← Grafana + Loki stack
   terraform/                  ← infrastructure-as-code
@@ -65,7 +65,7 @@ Each component has its own `CLAUDE.md`:
 | `honey-pots/mysql/CLAUDE.md` | MySQL emulator, event types, gotchas |
 | `addons/CLAUDE.md` | Addon package structure, shared inbox, fragment order |
 | `addons/metadata/CLAUDE.md` | Sidecar schema, log formats, offset tracking |
-| `addons/analyzer/CLAUDE.md` | Submission flow, CLEAN_UP behaviour, gotchas |
+| `addons/malware-sender/CLAUDE.md` | Submission flow, CLEAN_UP behaviour, gotchas |
 | `server-config/CLAUDE.md` | Base setup.sh steps, Tailscale SSH restriction |
 | `log-stack/CLAUDE.md` | Grafana/Loki config, LogQL queries |
 | `terraform/CLAUDE.md` | Terraform usage, for_each design, state keys |

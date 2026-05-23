@@ -1,0 +1,9 @@
+# Copy this file to terraform.tfvars and fill in your values.
+# terraform.tfvars is gitignored — never commit it.
+
+# Linode API token — create at cloud.linode.com → Profile → API Tokens
+# Requires Read/Write access to Linodes.
+linode_token = "your-linode-api-token"
+
+# Region — see https://api.linode.com/v4/regions
+region = "us-east"

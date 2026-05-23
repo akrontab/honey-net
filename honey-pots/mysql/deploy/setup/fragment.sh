@@ -11,7 +11,7 @@ echo "[mysql] Creating volume directories..."
 mkdir -p "${DEPLOY_DIR}/mysql/volumes/logs"
 
 # ── Build mysql image and start combined stack ────────────────────────
-# Build explicitly before "up" so analyzer (cowrie) and mysql-honeypot
+# Build explicitly before "up" so malware-sender and mysql-honeypot
 # are never built concurrently — concurrent BuildKit builds crash dockerd.
 echo "[mysql] Building mysql-honeypot image..."
 cd "${DEPLOY_DIR}"

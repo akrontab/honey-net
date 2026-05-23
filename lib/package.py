@@ -33,7 +33,7 @@ def _extract_vector_mounts(hp_name, volumes):
         if vol.startswith("./"):
             mounts.append(f"./{hp_name}/{vol[2:]}")
         else:
-            mounts.append(vol)  # named volume (e.g. analyzer-logs:/logs/malware:ro)
+            mounts.append(vol)  # named volume (e.g. malware-sender-logs:/logs/malware:ro)
     return mounts
 
 
@@ -125,6 +125,8 @@ def _inject_metadata_mounts(components, pkg_dir):
         if not logs_json_path.exists():
             continue
         for entry in json.loads(logs_json_path.read_text(encoding="utf-8")):
+            if "host" not in entry:
+                continue
             log_mounts.append(f"../{hp_name}/{entry['host']}:{entry['container']}:ro")
     if not log_mounts:
         return
@@ -135,6 +137,55 @@ def _inject_metadata_mounts(components, pkg_dir):
         yaml.safe_dump(meta_compose, default_flow_style=False, sort_keys=False),
         encoding="utf-8",
     )
+
+
+def _inject_metadata_sources(components, pkg_dir):
+    """Generate and inject SOURCES env var into metadata service from logs.json declarations."""
+    sources = []
+    for hp_name, base in components:
+        if base != "honey-pots":
+            continue
+        logs_json_path = REPO_ROOT / base / hp_name / "deploy" / "logs.json"
+        if not logs_json_path.exists():
+            continue
+        for entry in json.loads(logs_json_path.read_text(encoding="utf-8")):
+            if "format" not in entry or "log_file" not in entry:
+                continue
+            sources.append({"format": entry["format"], "log": f"{entry['container']}/{entry['log_file']}"})
+    if not sources:
+        return
+    meta_path = pkg_dir / "metadata" / "docker-compose.yml"
+    meta_compose = yaml.safe_load(meta_path.read_text(encoding="utf-8"))
+    env = meta_compose["services"]["metadata"].setdefault("environment", [])
+    env[:] = [e for e in env if not (isinstance(e, str) and e.startswith("SOURCES="))]
+    env.append(f"SOURCES={json.dumps(sources)}")
+    meta_path.write_text(
+        yaml.safe_dump(meta_compose, default_flow_style=False, sort_keys=False),
+        encoding="utf-8",
+    )
+
+
+def _inject_inbox_mounts(components, pkg_dir):
+    """Mount the shared inbox into any honeypot service that declares a downloads path."""
+    for hp_name, base in components:
+        if base != "honey-pots":
+            continue
+        logs_json_path = REPO_ROOT / base / hp_name / "deploy" / "logs.json"
+        if not logs_json_path.exists():
+            continue
+        for entry in json.loads(logs_json_path.read_text(encoding="utf-8")):
+            if not entry.get("downloads"):
+                continue
+            container_path = entry["container"]
+            compose_path = pkg_dir / hp_name / "docker-compose.yml"
+            compose = yaml.safe_load(compose_path.read_text(encoding="utf-8"))
+            compose["services"][hp_name].setdefault("volumes", []).append(
+                f"../inbox:{container_path}"
+            )
+            compose_path.write_text(
+                yaml.safe_dump(compose, default_flow_style=False, sort_keys=False),
+                encoding="utf-8",
+            )
 
 
 def _write_vector_config(all_names, pkg_dir):
@@ -222,6 +273,8 @@ def assemble_honeypot_package(server, pkg_dir):
 
     if "metadata" in all_names:
         _inject_metadata_mounts(components, pkg_dir)
+        _inject_inbox_mounts(components, pkg_dir)
+        _inject_metadata_sources(components, pkg_dir)
 
     _write_vector_config(all_names, pkg_dir)
     _write_root_compose(all_names, vector_mounts, pkg_dir)

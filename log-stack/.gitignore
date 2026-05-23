@@ -1,0 +1,5 @@
+.server-ip
+.loki-ip
+deploy/.env
+.venv/
+__pycache__/

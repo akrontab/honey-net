@@ -1,9 +1,9 @@
 """
 Metadata extractor — tails honeypot event logs and writes {sha256}.meta.json
-sidecars to the shared inbox so the analyzer can submit samples to the catalog.
+sidecars to the shared inbox so the malware-sender can submit samples to the catalog.
 
 Configured via env vars:
-  SOURCES     JSON array of {format, log, honeypot}. Supported formats: cowrie_jsonl
+  SOURCES     JSON array of {format, log}. Supported formats: cowrie_jsonl
   INBOX_DIR   Where to write .meta.json files (default /inbox)
   STATE_DIR   Where to persist log offsets across restarts (default /state)
   POLL_SECS   How often to check for new log lines (default 2)
@@ -34,7 +34,7 @@ def _filename_from_url(url: str, fallback: str) -> str:
     return fallback
 
 
-def _write_sidecar(sha256: str, src_ip: str, url: str, filename: str, honeypot: str, timestamp: str) -> None:
+def _write_sidecar(sha256: str, src_ip: str, url: str, filename: str, timestamp: str) -> None:
     path = INBOX_DIR / f"{sha256}.meta.json"
     if path.exists():
         return
@@ -43,7 +43,6 @@ def _write_sidecar(sha256: str, src_ip: str, url: str, filename: str, honeypot: 
         "src_ip":    src_ip,
         "url":       url,
         "filename":  filename,
-        "honeypot":  honeypot,
         "timestamp": timestamp,
     }), encoding="utf-8")
     print(f"[{_now()}] sidecar  {sha256[:12]}  src={src_ip}  url={url}", flush=True)
@@ -51,7 +50,7 @@ def _write_sidecar(sha256: str, src_ip: str, url: str, filename: str, honeypot: 
 
 # ── Format parsers ────────────────────────────────────────────────────────────
 
-def _parse_cowrie_jsonl(line: str, honeypot: str) -> None:
+def _parse_cowrie_jsonl(line: str) -> None:
     try:
         ev = json.loads(line)
     except json.JSONDecodeError:
@@ -65,7 +64,7 @@ def _parse_cowrie_jsonl(line: str, honeypot: str) -> None:
     src_ip   = ev.get("src_ip", "unknown")
     ts       = ev.get("timestamp", _now())
     filename = _filename_from_url(url, sha256)
-    _write_sidecar(sha256, src_ip, url, filename, honeypot, ts)
+    _write_sidecar(sha256, src_ip, url, filename, ts)
 
 
 PARSERS: dict = {
@@ -76,9 +75,8 @@ PARSERS: dict = {
 # ── Log tailer ────────────────────────────────────────────────────────────────
 
 class LogTailer:
-    def __init__(self, log_path: Path, honeypot: str, fmt: str, state_path: Path):
+    def __init__(self, log_path: Path, fmt: str, state_path: Path):
         self.log_path   = log_path
-        self.honeypot   = honeypot
         self.parse      = PARSERS[fmt]
         self.state_path = state_path
         self.offset     = self._load_offset()
@@ -100,7 +98,7 @@ class LogTailer:
             for line in f:
                 stripped = line.strip()
                 if stripped:
-                    self.parse(stripped, self.honeypot)
+                    self.parse(stripped)
             self.offset = f.tell()
         self._save_offset()
 
@@ -116,7 +114,6 @@ def main() -> None:
     for i, src in enumerate(SOURCES):
         fmt      = src.get("format", "")
         log_file = src.get("log", "")
-        honeypot = src.get("honeypot", f"unknown-{i}")
 
         if fmt not in PARSERS:
             sys.exit(f"Unknown format '{fmt}' for source {i} — supported: {list(PARSERS)}")
@@ -125,11 +122,10 @@ def main() -> None:
 
         tailers.append(LogTailer(
             log_path   = Path(log_file),
-            honeypot   = honeypot,
             fmt        = fmt,
             state_path = STATE_DIR / f"offset-{i}.txt",
         ))
-        print(f"[{_now()}] watching  {log_file}  format={fmt}  honeypot={honeypot}", flush=True)
+        print(f"[{_now()}] watching  {log_file}  format={fmt}", flush=True)
 
     print(f"[{_now()}] metadata extractor started  inbox={INBOX_DIR}", flush=True)
 

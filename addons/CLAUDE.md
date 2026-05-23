@@ -19,7 +19,7 @@ Addons are listed under `"addons"` in a server's `honey-net.json` entry:
   "name": "mysql-ssh",
   "type": "honeypot",
   "honeypots": ["cowrie", "mysql"],
-  "addons":    ["metadata", "analyzer"]
+  "addons":    ["metadata", "malware-sender"]
 }
 ```
 
@@ -47,7 +47,7 @@ addons/<name>/
 | Addon | Purpose |
 |-------|---------|
 | `metadata` | Tails honeypot event logs; writes `{sha256}.meta.json` sidecars to the shared inbox |
-| `analyzer` | Polls inbox for complete sidecars; submits samples to the malware catalog |
+| `malware-sender` | Polls inbox for complete sidecars; submits samples to the malware catalog |
 
 ## Shared inbox
 
@@ -56,8 +56,8 @@ on the host, mounted as `/inbox` inside each container.
 
 | File | Written by | Read by |
 |------|-----------|---------|
-| `{sha256}` | cowrie (`download_path = /inbox`) | analyzer |
-| `{sha256}.meta.json` | metadata | analyzer |
+| `{sha256}` | cowrie (via assembled inbox mount) | malware-sender |
+| `{sha256}.meta.json` | metadata | malware-sender |
 
 The inbox is created by `metadata`'s `fragment.sh` with permissions `777` so both
 Cowrie (UID 999) and root containers can write to it.
@@ -66,7 +66,7 @@ Cowrie (UID 999) and root containers can write to it.
 
 Fragments are appended to `setup.sh` in the order: honeypots first, then addons.
 The last addon's fragment is responsible for starting the stack (`docker compose up -d`).
-For `mysql-ssh` the order is: cowrie → mysql → metadata → analyzer (starts stack).
+For `mysql-ssh` the order is: cowrie → mysql → metadata → malware-sender (starts stack).
 
 ## Adding a new addon
 

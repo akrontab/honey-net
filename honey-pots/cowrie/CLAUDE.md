@@ -51,8 +51,12 @@ Real SSH is on port 65022 (Tailscale only) — managed by `server-config/`.
 
 ```
 /opt/<server>/cowrie/volumes/var/log/cowrie/cowrie.json   # attacker session events
-/opt/<server>/cowrie/volumes/var/lib/cowrie/downloads/    # malware samples
+/opt/<server>/inbox/                                      # malware binaries (assembled by control plane)
 ```
+
+Cowrie writes downloaded binaries to `/downloads` in the container (`download_path = /downloads`).
+When the `metadata` addon is included, the assembler mounts `../inbox` at that path so binaries
+land in the shared inbox; without the addon, Cowrie writes to a container-local directory.
 
 Shipped to Loki by Vector with `{job="cowrie"}` and `{job="malware"}`.
 

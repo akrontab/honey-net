@@ -1,0 +1,8 @@
+# Secrets — never commit
+terraform.tfvars
+
+# Terraform working directory and state
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup

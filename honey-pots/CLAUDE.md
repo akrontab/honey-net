@@ -210,23 +210,30 @@ to the metadata container — no manual edits to the metadata addon's
 
 ```json
 [
-  {"host": "volumes/logs", "container": "/logs/my-honeypot", "log_file": "my-honeypot.json"}
+  {"host": "volumes/logs", "container": "/logs/my-honeypot", "log_file": "my-honeypot.json"},
+  {"container": "/downloads", "downloads": true}
 ]
 ```
 
 Fields:
 - `host` — path relative to the honeypot's deployed directory (e.g. relative to
   `/opt/<server>/my-honeypot/`). Point to the directory containing the log file(s).
-- `container` — absolute path inside the metadata container where that directory
-  is mounted. Use `/logs/<honeypot-name>` by convention.
+- `container` — absolute path inside the metadata container (for log entries) or inside
+  the honeypot container (for the downloads entry).
 - `log_file` — filename of the JSON log within `host`. Used by `get_logs.py` to pull
   the log to the control machine. Omit if the honeypot has no JSON log worth pulling.
+- `downloads` — set `true` on one entry (no `host` needed) to declare the container path
+  where this honeypot writes downloaded malware binaries. When the `metadata` addon is
+  present the assembler mounts `../inbox` at that path; honeypots must not reference the
+  inbox directly.
+- `format` — log format key for the metadata addon (e.g. `"cowrie_jsonl"`). When set,
+  the assembler auto-generates a `SOURCES` entry for this log and injects it into the
+  metadata service. Omit if this log should not be parsed by metadata.
 
-The mount is always added as read-only (`:ro`). Whether the metadata addon actually
-parses the log depends on `METADATA_SOURCES` — `logs.json` just makes the directory
-available.
+Log entries are mounted read-only (`:ro`) into the metadata container. The downloads
+entry causes the shared inbox to be mounted into the honeypot container by the assembler.
 
-Omit `logs.json` entirely if the honeypot does not write logs worth cataloging.
+Omit `logs.json` entirely if the honeypot does not write logs or binaries worth cataloging.
 
 ## 6. test.py
 
