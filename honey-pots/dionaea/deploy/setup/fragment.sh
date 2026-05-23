@@ -13,10 +13,10 @@ echo "[dionaea] Creating volume directories..."
 mkdir -p "${DEPLOY_DIR}/dionaea/volumes/logs"
 mkdir -p "${DEPLOY_DIR}/dionaea/volumes/binaries"
 
-# ── Pull image and start stack ────────────────────────────────────────
-echo "[dionaea] Pulling image..."
+# ── Build image and start stack ───────────────────────────────────────
+echo "[dionaea] Building dionaea from source (~15 min on a Nanode)..."
 cd "${DEPLOY_DIR}"
-docker compose pull
+docker compose build dionaea
 
 echo "[dionaea] Starting honeypot stack..."
 docker compose up -d

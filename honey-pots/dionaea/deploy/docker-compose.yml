@@ -1,6 +1,7 @@
 services:
   dionaea:
-    image: dinotools/dionaea:latest
+    build:
+      context: ./dionaea
     container_name: dionaea
     restart: unless-stopped
     ports:
