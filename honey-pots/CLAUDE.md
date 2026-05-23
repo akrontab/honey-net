@@ -210,7 +210,7 @@ to the metadata container — no manual edits to the metadata addon's
 
 ```json
 [
-  {"host": "volumes/logs", "container": "/logs/my-honeypot"}
+  {"host": "volumes/logs", "container": "/logs/my-honeypot", "log_file": "my-honeypot.json"}
 ]
 ```
 
@@ -219,6 +219,8 @@ Fields:
   `/opt/<server>/my-honeypot/`). Point to the directory containing the log file(s).
 - `container` — absolute path inside the metadata container where that directory
   is mounted. Use `/logs/<honeypot-name>` by convention.
+- `log_file` — filename of the JSON log within `host`. Used by `get_logs.py` to pull
+  the log to the control machine. Omit if the honeypot has no JSON log worth pulling.
 
 The mount is always added as read-only (`:ro`). Whether the metadata addon actually
 parses the log depends on `METADATA_SOURCES` — `logs.json` just makes the directory
@@ -289,38 +291,14 @@ Add an entry under the top-level array. The `"honeypots"` list controls which pa
 `tailscale_ephemeral: true` means the Tailscale node is automatically removed when the VM
 is destroyed — use this for all honeypot servers.
 
-## 8. Control plane updates
+## 8. Control plane
 
-Three files in the repo root need updating when a new honeypot type has a locally-built
-Docker image or writes log files.
+No root script changes are needed when adding a new honeypot. The control plane
+reads everything it needs from the package at runtime:
 
-### redeploy.py — BUILD_MAP
-
-If the honeypot builds a local image (has a `build:` context in its `docker-compose.yml`),
-add it to `BUILD_MAP` so `redeploy.py` builds it before restarting the stack:
-
-```python
-BUILD_MAP = {
-    "mysql":        "mysql-honeypot",
-    "metadata":     "metadata",
-    "analyzer":     "analyzer",
-    "my-honeypot":  "my-honeypot",   # ← add this
-}
-```
-
-### get_logs.py — LOG_PATHS
-
-Add the path to the honeypot's JSON log file so `get_logs.py` can pull it:
-
-```python
-LOG_PATHS = {
-    "cowrie":       "/opt/{name}/cowrie/volumes/var/log/cowrie/cowrie.json",
-    "mysql":        "/opt/{name}/mysql/volumes/logs/mysql-honeypot.json",
-    "my-honeypot":  "/opt/{name}/my-honeypot/volumes/logs/my-honeypot.json",  # ← add this
-}
-```
-
-`{name}` is replaced at runtime with the server name.
+- **`redeploy.py`** — discovers locally-built images by scanning the component's
+  `docker-compose.yml` for `build:` keys.
+- **`get_logs.py`** — reads `log_file` from `deploy/logs.json` to find the log to pull.
 
 ## Full checklist
 
@@ -332,9 +310,7 @@ LOG_PATHS = {
 - [ ] Create `honey-pots/<name>/test.py`
 - [ ] Add entry to `honey-net.json` (name, type, ssh_key, honeypots, ports, tailscale_ephemeral)
 - [ ] Generate SSH key pair for the server (`ssh_key` path in honey-net.json)
-- [ ] If it writes catalogable log files: create `deploy/logs.json`
-- [ ] If locally built image: add to `BUILD_MAP` in `redeploy.py`
-- [ ] If it writes log files: add to `LOG_PATHS` in `get_logs.py`
+- [ ] If it writes catalogable log files: create `deploy/logs.json` (add `log_file` to enable `get_logs.py` pulling)
 - [ ] Run `terraform apply` to create the VM
 - [ ] Run `python sync_ips.py` to capture the public IP
 - [ ] Run `python gen_ts_key.py --ephemeral` for a Tailscale auth key

@@ -9,17 +9,9 @@ from pathlib import Path
 
 from lib.config import REPO_ROOT, load_manifest, load_state
 from lib.files import copy_tree
-from lib.package import assemble_honeypot_package
+from lib.package import assemble_honeypot_package, component_build_services
 from lib.server import select_server
 from lib.ssh import DEVNULL, ssh_key
-
-# Map component name → Docker service name that has a build: context.
-# Build images sequentially to avoid concurrent BuildKit builds crashing dockerd.
-BUILD_MAP = {
-    "mysql":    "mysql-honeypot",
-    "metadata": "metadata",
-    "analyzer": "analyzer",
-}
 
 def main():
     parser = argparse.ArgumentParser(
@@ -85,12 +77,16 @@ def main():
     )
 
     if server["type"] == "honeypot":
-        all_components = server.get("honeypots", []) + server.get("addons", [])
-        build_cmds = " && ".join(
-            f"{compose_cmd} build {BUILD_MAP[comp]}"
-            for comp in all_components
-            if comp in BUILD_MAP
+        components = (
+            [(hp, "honey-pots") for hp in server.get("honeypots", [])] +
+            [(a,  "addons")     for a  in server.get("addons",    [])]
         )
+        build_svcs = [
+            svc
+            for name, base in components
+            for svc in component_build_services(name, base)
+        ]
+        build_cmds = " && ".join(f"{compose_cmd} build {svc}" for svc in build_svcs)
         if build_cmds:
             restart_cmd = f"{rsync_cmd} && {build_cmds} && {compose_cmd} up -d"
         else:

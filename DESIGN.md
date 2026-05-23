@@ -11,6 +11,8 @@ The project is built around three design pillars:
 
 **2. Swappable components** — No component should be load-bearing in a way that locks the rest of the system in. Grafana and Loki handle dashboards and log storage today; swapping them out should only require changes to the log shipper configuration, not the honeypots or the network design. Vector is the abstraction layer between honeypots and the log backend — honeypots write to files, Vector ships them, and only the sink config changes when the backend does.
 
+**4. Self-describing packages** — Adding a new honeypot or addon must not require changes to any root script. Every behavior the control plane needs (log paths, build requirements, provisioning steps) is declared inside the package itself. Root scripts discover these properties at runtime by reading from the package directory.
+
 **3. Isolation** — Honeypots are explicitly untrusted environments. Docker isolates each honeypot process from the host OS. Admin services (Grafana, Loki) are bound to a private Tailscale IP and never exposed to the public internet. Each honeypot runs on its own VM so a compromise stays contained. Host hardening (UFW, SSH key-only auth, fail2ban) is applied uniformly at deploy time.
 
 Infrastructure-as-Code (currently Terraform) manages all cloud resources so the network can be torn down and rebuilt repeatably.
@@ -203,7 +205,14 @@ All honeypots follow the same conventions:
 - `setup.sh` applies host hardening and joins the Tailscale network using an ephemeral key — the node auto-removes from the tailnet when the VM is destroyed
 - Honeypot VMs are disposable; destroying and recreating one has no effect on the log-stack or other honeypots
 
-Adding a new honeypot means: creating a new subfolder under `honey-pots/` with the standard layout, adding an entry to `honey-net.json`, and adding a module block in `terraform/main.tf`. No changes to the log-stack or any root script are required.
+Adding a new honeypot means: creating a new subfolder under `honey-pots/` with the standard layout, adding an entry to `honey-net.json`, and adding a module block in `terraform/main.tf`. No changes to the log-stack or any root script are required. The control plane discovers everything it needs from the package at runtime:
+
+| Property | How the control plane reads it |
+|---|---|
+| Build requirements | Scans `docker-compose.yml` for `build:` keys (`redeploy.py`) |
+| Log file to pull | Reads `log_file` from `deploy/logs.json` (`get_logs.py`) |
+| Provisioning steps | Appends `setup/fragment.sh` in order (`deploy.py`) |
+| Metadata log mounts | Reads `host`/`container` from `deploy/logs.json` (`deploy.py`) |
 
 Currently deployed:
 

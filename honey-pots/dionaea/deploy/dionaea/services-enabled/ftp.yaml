@@ -1,0 +1,7 @@
+- name: ftp
+  config: []
+  listen:
+    - addresses:
+        - 0.0.0.0
+      ports:
+        - 21

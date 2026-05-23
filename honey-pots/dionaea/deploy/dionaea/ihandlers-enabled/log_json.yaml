@@ -1,0 +1,6 @@
+- name: log_json
+  config:
+    - name: filename
+      value: /opt/dionaea/var/log/dionaea/dionaea.json
+    - name: mode
+      value: a

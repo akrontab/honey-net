@@ -99,6 +99,12 @@ ufw default allow outgoing
 ufw allow "${REAL_SSH_PORT}/tcp" comment 'real SSH — Tailscale only after Tailscale joins'
 ufw --force enable
 
+# UFW's default FORWARD policy is DROP, which blocks Docker containers from
+# routing traffic out (DNS lookups, pip install, apt-get inside build containers).
+# Set it to ACCEPT so containers can reach the internet.
+sed -i 's/DEFAULT_FORWARD_POLICY="DROP"/DEFAULT_FORWARD_POLICY="ACCEPT"/' /etc/default/ufw
+ufw reload
+
 # ufw --force reset wipes Docker's iptables MASQUERADE rule — restart Docker
 # so it re-adds its NAT rules, restoring container internet access.
 systemctl restart docker

@@ -70,9 +70,12 @@ For `mysql-ssh` the order is: cowrie → mysql → metadata → analyzer (starts
 
 ## Adding a new addon
 
+No root script changes are needed. The control plane reads everything it needs from the
+package at runtime — `redeploy.py` discovers locally-built images by scanning the
+addon's `docker-compose.yml` for `build:` keys.
+
 - [ ] Create `addons/<name>/deploy/docker-compose.yml`
 - [ ] Create `addons/<name>/deploy/.env.example`
 - [ ] Create `addons/<name>/deploy/setup/fragment.sh`
 - [ ] Create `addons/<name>/CLAUDE.md`
-- [ ] If it has a locally-built image, add it to `BUILD_MAP` in `redeploy.py`
 - [ ] Add `"<name>"` to the `addons` list of any server that should run it
