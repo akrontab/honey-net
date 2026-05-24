@@ -37,7 +37,6 @@ def _gen_key_args():
 # (name, module, description, interactive-args-fn-or-None)
 COMMANDS = [
     ("provision",  "provision",      "End-to-end provisioning: terraform + server setup", None),
-    ("deploy",     "deploy",         "First deploy to a server (port 22)",            None),
     ("redeploy",   "redeploy",       "Update a live server (port 65022, Tailscale)",  None),
     ("connect",    "connect",        "Open an SSH session to a server",               _connect_args),
     ("sync",       "sync_ips",       "Sync IPs from Terraform + Tailscale to state.json", None),

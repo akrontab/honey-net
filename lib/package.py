@@ -204,7 +204,7 @@ def assemble_honeypot_package(server, pkg_dir):
       - docker-compose.yml — include: per component + single merged vector service
 
     pkg_dir must already exist.  Does NOT generate setup.sh or copy server-config
-    files (deploy.py handles those extras for first deploy).
+    files (provision.py handles those extras).
     """
     if yaml is None:
         sys.exit("pyyaml is required — run setup.ps1 or setup.sh to reinstall dependencies")

@@ -23,7 +23,7 @@ Addons are listed under `"addons"` in a server's `honey-net.json` entry:
 }
 ```
 
-`deploy.py` and `redeploy.py` treat addons identically to honeypots for package
+`provision.py` and `redeploy.py` treat addons identically to honeypots for package
 assembly — they copy `addons/<name>/deploy/` into the deploy package and append
 `setup/fragment.sh` to the server's `setup.sh`.
 

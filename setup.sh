@@ -38,7 +38,7 @@ Activate the environment:
   source .venv/bin/activate
 
 Then run any script:
-  python deploy.py --help
+  python provision.py --help
   python connect.py --help
   python sync_ips.py
 "

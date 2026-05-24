@@ -21,15 +21,7 @@ Grafana and Loki are bound to the Tailscale IP only — never exposed to the pub
 This repo is deployed from the `honey-net` control plane. Run from the honey-net root:
 
 ```
-python deploy.py --server log-stack
-python connect.py --server log-stack --pre-setup   # port 22, before setup runs
-```
-
-On the server:
-
-```bash
-sudo bash /root/log-stack/setup/setup.sh
-# Prompts for: Tailscale auth key, Grafana admin password
+python provision.py --server log-stack
 ```
 
 After setup completes:

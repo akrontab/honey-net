@@ -27,33 +27,19 @@ cd ..
 python honey.py sync         # writes public IPs to state.json
 ```
 
-**3. Deploy log-stack** (Grafana + Loki — do this first)
+**3. Provision log-stack** (Grafana + Loki — do this first)
 ```
-python honey.py gen-key      # generate a non-ephemeral Tailscale key
-python honey.py deploy       # select: log-stack
-python honey.py connect      # select: log-stack → pre-setup: y
+python honey.py provision    # select: log-stack
+# prompts for: Tailscale API key, Grafana admin password
 ```
-```bash
-sudo bash /root/log-stack/setup.sh
-# prompts for: Tailscale auth key, Grafana admin password
-```
-```
-python honey.py sync         # captures log-stack Tailscale IP
-```
+Generates a Tailscale auth key, deploys files, runs setup end-to-end, and writes the
+log-stack Tailscale IP to `state.json`.
 
-**4. Deploy a honeypot**
+**4. Provision honeypots**
 ```
-python honey.py gen-key      # ephemeral: y
-python honey.py deploy       # select: your honeypot server
-python honey.py connect      # select: honeypot → pre-setup: y
+python honey.py provision    # select: your honeypot server
 ```
-```bash
-sudo bash /root/<server-name>/setup.sh
-# prompts for: Tailscale auth key, Loki IP (pre-filled), hostname
-```
-```
-python honey.py sync
-```
+Reads `LOKI_HOST` from `state.json` automatically.
 
 **5. Verify**
 ```
@@ -100,7 +86,6 @@ honey-net/
   honey-net.json     ← server manifest (single source of truth)
   state.json         ← gitignored, written by sync_ips.py
   honey.py           ← interactive launcher for all commands
-  deploy.py          ← first deploy (public IP, port 22)
   redeploy.py        ← update a live server (Tailscale, port 65022)
   connect.py         ← SSH into a server
   sync_ips.py        ← write IPs from Terraform + Tailscale to state.json
@@ -156,37 +141,22 @@ cd ..
 python sync_ips.py
 ```
 
-### 2. Deploy log-stack first
+### 2. Provision log-stack first
 
 ```
-python deploy.py --server log-stack
-python connect.py --server log-stack --pre-setup
-```
-```bash
-sudo bash /root/log-stack/setup.sh
-# Prompts for: Tailscale auth key, Grafana admin password
+python provision.py --server log-stack
 ```
 
-After setup prints the Tailscale IP, capture it:
-```
-python sync_ips.py
-```
+Prompts for Tailscale API key and Grafana admin password, then runs end-to-end setup
+and writes the log-stack Tailscale IP to `state.json`.
 
-### 3. Deploy honeypots
+### 3. Provision honeypots
 
 ```
-python gen_ts_key.py --ephemeral
-python deploy.py --server mysql-ssh
-python connect.py --server mysql-ssh --pre-setup
-```
-```bash
-sudo bash /root/mysql-ssh/setup.sh
-# Prompts for: Tailscale auth key, Loki IP (pre-filled from state.json), hostname
+python provision.py --server mysql-ssh
 ```
 
-```
-python sync_ips.py
-```
+Reads `LOKI_HOST` from `state.json` automatically.
 
 ## honey.py — interactive launcher
 
@@ -195,7 +165,7 @@ python sync_ips.py
 ```
 Honey-Net
 
-  1  deploy      First deploy to a server (port 22)
+  1  provision   End-to-end provisioning: terraform + server setup
   2  redeploy    Update a live server (port 65022, Tailscale)
   3  connect     Open an SSH session to a server
   4  sync        Sync IPs from Terraform + Tailscale to state.json
@@ -210,7 +180,7 @@ Select:
 Commands that need a server name prompt for one when omitted. All commands also accept direct flags:
 
 ```
-python honey.py deploy --server mysql-ssh
+python honey.py provision --server mysql-ssh
 python honey.py connect --server mysql-ssh
 python honey.py connect --server log-stack --pre-setup
 python honey.py redeploy --server mysql-ssh
@@ -233,8 +203,7 @@ python sync_ips.py
 
 1. Add an entry to `honey-net.json` with `name`, `ssh_key`, `honeypots`, `ports`.
 2. Generate an SSH key pair for it.
-3. Run `terraform apply` — the VM is created automatically.
-4. Follow the deployment steps above.
+3. Run `python provision.py --server <name>` — creates the VM and runs full setup.
 
 No changes to `terraform/main.tf` or any root script are needed.
 

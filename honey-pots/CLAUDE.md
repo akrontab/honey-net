@@ -1,6 +1,6 @@
 # Adding a New Honeypot Package
 
-A honeypot package is a self-contained folder under `honey-pots/` that teaches `deploy.py`
+A honeypot package is a self-contained folder under `honey-pots/` that teaches `provision.py`
 and `redeploy.py` how to deploy a service to a honeypot server. Adding one requires no
 changes to Terraform or `server-config/`.
 
@@ -24,7 +24,7 @@ honey-pots/<name>/
 ## 1. docker-compose.yml
 
 Each honeypot's `docker-compose.yml` is **not** a complete stack — it is included into a
-generated top-level compose file by `deploy.py`. It must not define shared volumes or
+generated top-level compose file by `provision.py`. It must not define shared volumes or
 networks that conflict with other honeypots on the same server.
 
 Required conventions:
@@ -155,7 +155,7 @@ HONEYPOT_HOSTNAME=my-honeypot
 
 ## 4. setup/fragment.sh
 
-`deploy.py` concatenates `server-config/setup.sh` with each honeypot's `fragment.sh`
+`provision.py` concatenates `server-config/setup.sh` with each honeypot's `fragment.sh`
 in the order listed under `"honeypots"` in `honey-net.json`. The result is the `setup.sh`
 that lands on the server.
 
@@ -288,7 +288,7 @@ if __name__ == "__main__":
 ## 7. honey-net.json entry
 
 Add an entry under the top-level array. The `"honeypots"` list controls which packages
-`deploy.py` bundles and in what order `fragment.sh` files are concatenated.
+`provision.py` bundles and in what order `fragment.sh` files are concatenated.
 
 ```json
 {
@@ -324,11 +324,6 @@ reads everything it needs from the package at runtime:
 - [ ] Add entry to `honey-net.json` (name, type, ssh_key, honeypots, ports, tailscale_ephemeral)
 - [ ] Generate SSH key pair for the server (`ssh_key` path in honey-net.json)
 - [ ] If it writes catalogable log files: create `deploy/logs.json` (add `log_file` to enable `get_logs.py` pulling)
-- [ ] Run `terraform apply` to create the VM
-- [ ] Run `python sync_ips.py` to capture the public IP
-- [ ] Run `python gen_ts_key.py --ephemeral` for a Tailscale auth key
-- [ ] Run `python deploy.py --server <name>` to upload the package
-- [ ] SSH in (`python connect.py --server <name> --pre-setup`) and run `sudo bash /root/<name>/setup.sh`
-- [ ] Run `python sync_ips.py` again to capture the Tailscale IP
+- [ ] Run `python provision.py --server <name>` — creates VM, deploys package, runs setup end-to-end
 - [ ] Run `python test_honeypot.py <name>` to verify (or `python honey.py test`)
 - [ ] Add a Grafana dashboard to `log-stack/deploy/grafana/provisioning/dashboards/`

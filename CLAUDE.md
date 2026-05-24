@@ -47,7 +47,6 @@ honey-net/                    ← this repo (control plane)
   setup.sh                    ← one-time local setup (macOS/Linux)
   honey.py                    ← interactive launcher for all control scripts
   provision.py                ← end-to-end provisioning (terraform + server setup)
-  deploy.py                   ← first deploy (port 22)
   redeploy.py                 ← update a live server (port 65022, Tailscale)
   connect.py                  ← SSH into a server
   sync_ips.py                 ← write IPs from terraform + Tailscale to state.json
@@ -144,8 +143,7 @@ cd terraform && terraform destroy
 1. Add an entry to `honey-net.json` with `name`, `type`, `ssh_key`, `ports`, and `honeypots`.
 2. Generate an SSH key pair for the new server.
 3. If it's a new honeypot type, create `honey-pots/<name>/` with the standard layout.
-4. Run `terraform apply` — the new VM is created automatically.
-5. Run `python sync_ips.py` to add the new server to `state.json`.
+4. Run `python provision.py --server <name>` — creates the VM via Terraform and runs full setup.
 
 No changes to `terraform/main.tf` are needed.
 
@@ -156,54 +154,22 @@ Deploy log-stack first — its Tailscale IP is required by Vector on every honey
 ### 1. Deploy log-stack
 
 ```
-python deploy.py --server log-stack
-python connect.py --server log-stack --pre-setup   # port 22 via public IP (before setup.sh runs)
-```
-```bash
-sudo bash /root/log-stack/setup.sh
-# Prompts for: Tailscale auth key, Grafana admin password
+python provision.py --server log-stack
 ```
 
-When setup completes it prints the Tailscale IP:
-```
-Tailscale IP : 100.x.x.x
-Grafana      : http://100.x.x.x:3000
-Loki         : http://100.x.x.x:3100
-```
-
-**Run `sync_ips.py` now** — this captures the log-stack Tailscale IP into `state.json`.
-Honeypot `setup.sh` reads that IP from `state.json` to configure Vector. If you skip this
-step, you will have to set `LOKI_HOST` manually in the honeypot's `.env` after the fact.
-
-```
-python sync_ips.py
-```
+Prompts for Tailscale API key (saved to `~/.tailscale-apikey`), Grafana admin password,
+then runs end-to-end: generates Tailscale auth key, SCPs files, runs `setup.sh`, polls
+Tailscale until the node registers, and writes the Tailscale IP to `state.json`.
 
 ### 2. Deploy honeypots
 
-Generate a Tailscale auth key for the honeypot server:
 ```
-python gen_ts_key.py --ephemeral   # ephemeral — node auto-removes when VM is destroyed
-```
-
-Deploy and provision:
-```
-python deploy.py --server mysql-ssh   # assembles package (cowrie + mysql), SCPs to server
-python connect.py --server mysql-ssh --pre-setup   # port 22 via public IP (before setup.sh runs)
-```
-```bash
-sudo bash /root/mysql-ssh/setup.sh
-# Prompts for: Tailscale auth key, Loki Tailscale IP (pre-filled from state.json), honeypot hostname
+python provision.py --server mysql-ssh
 ```
 
-After `setup.sh` completes, port 22 is closed and SSH moves to port 65022 on the
-Tailscale interface only.
-
-Run `sync_ips.py` a final time to capture the honeypot's Tailscale IP — needed by
-`redeploy.py` and `connect.py` going forward:
-```
-python sync_ips.py
-```
+Same flow. `provision.py` reads `LOKI_HOST` from `state.json` (set in step 1) and passes
+it to `setup.sh` automatically. After setup completes, port 22 is closed and SSH moves
+to port 65022 on the Tailscale interface only.
 
 ### 3. Verify logs are flowing
 
