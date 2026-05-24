@@ -152,6 +152,23 @@ systemctl restart ssh
 ss -tlnp | grep sshd    # should show 65022
 ```
 
+### Grafana provisioning permission denied on first start
+
+`cp -r` in `setup.sh` creates files and directories owned by root. Grafana (uid 472)
+silently skips all provisioning when it can't read `/etc/grafana/provisioning/` — no
+dashboards or datasources appear but Grafana starts cleanly. Symptom: `permission denied`
+in `docker compose logs grafana` on the provisioning paths.
+
+`setup.sh` now runs `chmod -R a+rX "${DEPLOY_DIR}"` immediately after `cp`. If you have
+an existing server that was provisioned before this fix:
+
+```bash
+chmod -R a+rX /opt/log-stack/grafana
+docker compose -f /opt/log-stack/docker-compose.yml restart grafana
+```
+
+`redeploy.py` also runs `chmod a+rX` after every rsync, so redeployments are not affected.
+
 ### Disk usage on a Nanode (25GB)
 
 Loki retention is set to 30 days. On a heavily-attacked honeypot, log volume can be significant. The 25GB Nanode disk is the binding constraint — if Loki fills it, Docker will stop writing and the stack will go unhealthy. Monitor with `df -h` and tune `ingestion_rate_mb` or `retention_period` in `loki/loki-config.yml` if needed.

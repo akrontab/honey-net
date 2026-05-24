@@ -64,16 +64,11 @@ Useful LogQL queries in Explore:
 ## Re-deploying after changes
 
 ```
-python deploy.py --server log-stack --post-setup   # from honey-net root
+python redeploy.py --server log-stack   # from honey-net root
 ```
 
-Then on the server:
-
-```bash
-sudo bash /root/log-stack/setup/setup.sh --redeploy
-```
-
-`--redeploy` skips system provisioning and just syncs files + restarts the stack. The `.env` is preserved.
+Rsyncs files from the repo to the server over Tailscale (port 65022), fixes permissions,
+and runs `docker compose up -d`. The `.env` is preserved.
 
 ## Verifying logs are flowing
 
