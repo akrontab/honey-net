@@ -32,6 +32,7 @@ fi
 if [[ "${1:-}" == "--redeploy" ]]; then
   echo "Syncing files to ${DEPLOY_DIR}..."
   cp -r "${SCRIPT_DIR}/../." "${DEPLOY_DIR}/"
+  chmod -R a+rX "${DEPLOY_DIR}"
   cd "${DEPLOY_DIR}"
   docker compose up -d
   docker compose restart grafana
@@ -153,6 +154,8 @@ echo "  Tailscale IP: ${TAILSCALE_IP}"
 echo "[9/9] Deploying to ${DEPLOY_DIR} and starting stack..."
 mkdir -p "${DEPLOY_DIR}"
 cp -r "${SCRIPT_DIR}/../." "${DEPLOY_DIR}/"
+# Grafana runs as uid 472 — ensure it can read provisioning files
+chmod -R a+rX "${DEPLOY_DIR}"
 
 cat > "${DEPLOY_DIR}/.env" <<EOF
 TAILSCALE_IP=${TAILSCALE_IP}
