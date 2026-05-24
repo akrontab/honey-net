@@ -15,11 +15,20 @@ Backends are provisioned before honeypots. Within backends, log-stack comes befo
 malware-catalog because honeypots need the log-stack Tailscale IP as LOKI_HOST.
 
 Usage:
-  python provision.py                  # terraform + provision all servers
-  python provision.py --skip-terraform # skip terraform, use existing state.json
-  python provision.py --infra-only     # terraform + write state.json, then stop
-  python provision.py --server NAME    # provision one server (terraform still runs
-                                       # unless --skip-terraform is also given)
+  python provision.py                         # terraform + provision all servers
+  python provision.py --skip-terraform        # skip terraform, use existing state.json
+  python provision.py --infra-only            # terraform + write state.json, then stop
+  python provision.py --server NAME           # provision one server (terraform still runs
+                                              # unless --skip-terraform is also given)
+  python provision.py --skip-terraform --force  # reprovision even already-provisioned servers
+
+Resilience behaviour:
+  - Waits up to 120s for SSH to become available after VM creation before SCP.
+  - Retries SCP up to 6× on transient failures.
+  - Handles Tailscale API 429 rate-limiting in the post-setup poll loop.
+  - Writes state.json atomically (temp file + rename) so Ctrl+C cannot corrupt it.
+  - Skips servers that already have a tailscale_ip in state.json (prompts to confirm);
+    use --force to reprovision without the prompt.
 """
 
 import argparse
@@ -37,7 +46,7 @@ from lib.color import bold, green, gray, yellow
 from lib.config import REPO_ROOT, load_manifest
 from lib.files import copy_tree
 from lib.package import assemble_honeypot_package
-from lib.ssh import DEVNULL, ssh_key, run_ssh
+from lib.ssh import DEVNULL, ssh_key, ssh_base_args, scp_args, run_ssh
 from check_ssh_keys import check_or_create
 
 _CONF_FILES = ["sshd_hardening.conf", "99-hardening.conf", "fail2ban-jail.local"]
@@ -87,6 +96,13 @@ def _terraform_apply():
         sys.exit("terraform apply failed")
 
 
+def _write_state(state):
+    """Atomically write state to state.json (safe against Ctrl+C mid-write)."""
+    tmp = _STATE_FILE.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+    os.replace(tmp, _STATE_FILE)
+
+
 def _terraform_write_state():
     """Read terraform outputs and write public IPs to state.json."""
     r = subprocess.run(
@@ -96,7 +112,16 @@ def _terraform_write_state():
     if r.returncode != 0:
         sys.exit(f"terraform output failed:\n{r.stderr.strip()}")
 
-    public_ips = json.loads(r.stdout).get("server_ips", {}).get("value", {})
+    outputs = json.loads(r.stdout)
+    server_ips_block = outputs.get("server_ips")
+    if server_ips_block is None:
+        sys.exit(
+            "terraform output missing 'server_ips' key — "
+            "did 'terraform apply' complete successfully?"
+        )
+    public_ips = server_ips_block.get("value", {})
+    if not public_ips:
+        sys.exit("terraform output 'server_ips' is empty — no servers were created")
 
     # Preserve Tailscale IPs from any prior partial run
     state = {}
@@ -106,7 +131,7 @@ def _terraform_write_state():
     for name, ip in public_ips.items():
         state.setdefault(name, {})["public_ip"] = ip
 
-    _STATE_FILE.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+    _write_state(state)
     print(f"\n[terraform] state.json written — {len(public_ips)} server(s):")
     for name, ip in sorted(public_ips.items()):
         print(f"  {name:<25} {ip}")
@@ -166,6 +191,25 @@ def _gen_ts_key(api_key, *, ephemeral=False):
     return resp.json()["key"]
 
 
+def _await_ssh(pub_ip, key, *, timeout=120, interval=10):
+    """Block until SSH on port 22 accepts connections (VM boot wait)."""
+    print(f"  Waiting for SSH on {pub_ip}", end="", flush=True)
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        r = subprocess.run(
+            ssh_base_args(key, 22, pub_ip) + ["exit"],
+            capture_output=True,
+            timeout=15,
+        )
+        if r.returncode == 0:
+            print(" ready")
+            return
+        print(".", end="", flush=True)
+        time.sleep(interval)
+    print()
+    sys.exit(f"SSH not available on {pub_ip} after {timeout}s — VM may still be booting")
+
+
 def _poll_tailscale_ip(api_key, hostname, *, timeout=300, interval=10):
     """Poll until hostname appears in the tailnet; return its 100.x IP or None."""
     import requests
@@ -178,6 +222,11 @@ def _poll_tailscale_ip(api_key, hostname, *, timeout=300, interval=10):
                 headers={"Authorization": f"Bearer {api_key}"},
                 timeout=10,
             )
+            if resp.status_code == 429:
+                wait = int(resp.headers.get("Retry-After", 30))
+                print(f"(rate limited, waiting {wait}s)", end="", flush=True)
+                time.sleep(wait)
+                continue
             resp.raise_for_status()
             for dev in resp.json().get("devices", []):
                 if dev["hostname"] == hostname:
@@ -229,20 +278,21 @@ def _stage_honeypot(server, pkg_dir):
         f.write(setup)
 
 
-def _scp(pkg_dir, key, pub_ip):
-    r = subprocess.run([
-        "scp", "-r", "-P", "22", "-i", key,
-        "-o", "StrictHostKeyChecking=no",
-        "-o", f"UserKnownHostsFile={DEVNULL}",
-        str(pkg_dir), f"root@{pub_ip}:/root/",
-    ])
-    if r.returncode != 0:
-        sys.exit(f"SCP failed (exit {r.returncode})")
+def _scp(pkg_dir, key, pub_ip, *, retries=6, delay=10):
+    args = scp_args(key, 22) + [str(pkg_dir), f"root@{pub_ip}:/root/"]
+    for attempt in range(retries):
+        r = subprocess.run(args)
+        if r.returncode == 0:
+            return
+        if attempt < retries - 1:
+            print(f"  SCP failed (attempt {attempt + 1}/{retries}), retrying in {delay}s...")
+            time.sleep(delay)
+    sys.exit(f"SCP failed after {retries} attempts")
 
 # ── Provision one server ──────────────────────────────────────────────────────
 
 def _provision(server, state, ts_api_key, *, grafana_password="",
-               loki_host="", catalog_url=""):
+               loki_host="", catalog_url="", force=False):
     name   = server["name"]
     stype  = server["type"]
     key    = ssh_key(server["ssh_key"])
@@ -255,9 +305,19 @@ def _provision(server, state, ts_api_key, *, grafana_password="",
     print(bold(f"  {name}  ({stype})  {pub_ip}"))
     print(bold(f"{'─'*60}"))
 
+    existing_ts_ip = state.get(name, {}).get("tailscale_ip")
+    if existing_ts_ip and not force:
+        print(yellow(f"  '{name}' already has Tailscale IP {existing_ts_ip} in state.json"))
+        ans = input("  Reprovision anyway? [y/N] ").strip().lower()
+        if ans != "y":
+            print(f"  Skipping '{name}'.")
+            return existing_ts_ip
+
     ephemeral = server.get("tailscale_ephemeral", False)
     print(f"Generating {'ephemeral' if ephemeral else 'non-ephemeral'} Tailscale auth key...")
     ts_authkey = _gen_ts_key(ts_api_key, ephemeral=ephemeral)
+
+    _await_ssh(pub_ip, key)
 
     with tempfile.TemporaryDirectory() as tmp:
         pkg_dir = Path(tmp) / name
@@ -281,8 +341,8 @@ def _provision(server, state, ts_api_key, *, grafana_password="",
     if stype == "honeypot":
         env["HONEYPOT_HOSTNAME"] = name
 
-    env_prefix    = " ".join(f"{k}={shlex.quote(v)}" for k, v in env.items())
-    setup_remote  = f"/root/{name}/setup/setup.sh" if stype == "backend" else f"/root/{name}/setup.sh"
+    env_prefix   = " ".join(f"{k}={shlex.quote(v)}" for k, v in env.items())
+    setup_remote = f"/root/{name}/setup/setup.sh" if stype == "backend" else f"/root/{name}/setup.sh"
 
     print("Running setup.sh (this takes several minutes)...")
     r = run_ssh(key, 22, pub_ip, f"{env_prefix} bash {setup_remote}", check=False)
@@ -302,7 +362,7 @@ def _provision(server, state, ts_api_key, *, grafana_password="",
 def _write_tailscale_ip(name, ts_ip):
     state = json.loads(_STATE_FILE.read_text(encoding="utf-8"))
     state.setdefault(name, {})["tailscale_ip"] = ts_ip
-    _STATE_FILE.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+    _write_state(state)
     print(f"  state.json: {name} tailscale_ip = {ts_ip}")
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -313,10 +373,11 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "examples:\n"
-            "  python provision.py                  # full run: terraform + all servers\n"
-            "  python provision.py --skip-terraform # skip terraform, provision servers only\n"
-            "  python provision.py --infra-only     # terraform + write state.json, then stop\n"
-            "  python provision.py --server NAME    # provision one server (terraform still runs)"
+            "  python provision.py                         # full run: terraform + all servers\n"
+            "  python provision.py --skip-terraform        # skip terraform, provision servers only\n"
+            "  python provision.py --infra-only            # terraform + write state.json, then stop\n"
+            "  python provision.py --server NAME           # provision one server (terraform still runs)\n"
+            "  python provision.py --skip-terraform --force  # reprovision even already-provisioned servers"
         ),
     )
     parser.add_argument("--server", "-s", metavar="NAME",
@@ -325,6 +386,8 @@ def main():
                         help="Skip terraform phase; use existing state.json")
     parser.add_argument("--infra-only", action="store_true",
                         help="Run terraform + write state.json, then stop (no server setup)")
+    parser.add_argument("--force", action="store_true",
+                        help="Reprovision servers that already have a Tailscale IP in state.json")
     args = parser.parse_args()
 
     servers = load_manifest()
@@ -408,6 +471,7 @@ def main():
             grafana_password=grafana_password,
             loki_host=loki_host,
             catalog_url=catalog_url,
+            force=args.force,
         )
 
         if server["name"] == "log-stack" and ts_ip:

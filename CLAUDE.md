@@ -158,8 +158,13 @@ python provision.py --server log-stack
 ```
 
 Prompts for Tailscale API key (saved to `~/.tailscale-apikey`), Grafana admin password,
-then runs end-to-end: generates Tailscale auth key, SCPs files, runs `setup.sh`, polls
-Tailscale until the node registers, and writes the Tailscale IP to `state.json`.
+then runs end-to-end: waits for SSH, generates Tailscale auth key, SCPs files, runs
+`setup.sh`, polls Tailscale until the node registers, and writes the Tailscale IP to
+`state.json`.
+
+If the run is interrupted and restarted, servers that already have a `tailscale_ip` in
+`state.json` are skipped (prompts to confirm). Use `--force` to reprovision them without
+the prompt.
 
 ### 2. Deploy honeypots
 
