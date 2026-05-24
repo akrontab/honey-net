@@ -54,6 +54,7 @@ honey-net/                    ← this repo (control plane)
   gen_ts_key.py               ← generate a Tailscale auth key
   check_ssh_keys.py           ← check / generate SSH keys for all servers
   check_logs.py               ← check log stream freshness in Loki
+  check_disk.py               ← check disk usage on all servers (25 GB Nanode limit)
   test_loki.py                ← push a test log to Loki to verify the stack
   test_honeypot.py            ← run smoke tests for a honeypot type
   lib/                        ← shared library (config, ssh, color, package, server, files)

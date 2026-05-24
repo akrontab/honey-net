@@ -86,12 +86,18 @@ honey-net/
   honey-net.json     ← server manifest (single source of truth)
   state.json         ← gitignored, written by sync_ips.py
   honey.py           ← interactive launcher for all commands
+  provision.py       ← end-to-end provisioning (terraform + server setup)
   redeploy.py        ← update a live server (Tailscale, port 65022)
   connect.py         ← SSH into a server
   sync_ips.py        ← write IPs from Terraform + Tailscale to state.json
   get_logs.py        ← pull logs from a honeypot
   gen_ts_key.py      ← generate a Tailscale auth key
-  _lib.py            ← shared utilities
+  check_ssh_keys.py  ← check / generate SSH keys for all servers
+  check_logs.py      ← check log stream freshness in Loki
+  check_disk.py      ← check disk usage on all servers (25 GB Nanode limit)
+  test_loki.py       ← push a test log to Loki to verify the stack
+  test_honeypot.py   ← run smoke tests for a honeypot type
+  _lib.py            ← backward-compat shim for honey-pots/*/test.py
   setup.ps1          ← one-time local setup (Windows)
   setup.sh           ← one-time local setup (macOS/Linux)
   requirements.txt
@@ -165,14 +171,18 @@ Reads `LOKI_HOST` from `state.json` automatically.
 ```
 Honey-Net
 
-  1  provision   End-to-end provisioning: terraform + server setup
-  2  redeploy    Update a live server (port 65022, Tailscale)
-  3  connect     Open an SSH session to a server
-  4  sync        Sync IPs from Terraform + Tailscale to state.json
-  5  logs        Pull logs from a honeypot server
-  6  gen-key     Generate a Tailscale auth key
-  7  check-keys  Check SSH keys in honey-net.json; generate missing
-  q  quit
+  1   provision    End-to-end provisioning: terraform + server setup
+  2   redeploy     Update a live server (port 65022, Tailscale)
+  3   connect      Open an SSH session to a server
+  4   sync         Sync IPs from Terraform + Tailscale to state.json
+  5   logs         Pull logs from a honeypot server
+  6   gen-key      Generate a Tailscale auth key
+  7   check-keys   Check SSH keys in honey-net.json; generate missing
+  8   check-logs   Check log stream freshness in Loki
+  9   check-disk   Check disk usage on all servers (25 GB Nanode limit)
+  10  test-loki    Push a test log to Loki to verify the stack
+  11  test         Run smoke tests for a honeypot from this machine
+  q   quit
 
 Select:
 ```
@@ -188,6 +198,9 @@ python honey.py logs --server mysql-ssh
 python honey.py sync
 python honey.py gen-key --ephemeral
 python honey.py check-keys
+python honey.py check-logs
+python honey.py check-disk
+python honey.py check-disk --server log-stack
 ```
 
 Or invoke the scripts directly — same flags, same behavior:
