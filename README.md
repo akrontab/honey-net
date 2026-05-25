@@ -17,17 +17,7 @@ cd honey-net
 python honey.py check-keys   # generates any missing SSH key pairs
 ```
 
-**2. Provision VMs with Terraform**
-```powershell
-cd terraform
-copy terraform.tfvars.example terraform.tfvars
-# Add your linode_token to terraform.tfvars
-terraform init && terraform apply
-cd ..
-python honey.py sync         # writes public IPs to state.json
-```
-
-**3. Provision all servers**
+**2. Provision all servers**
 ```
 python honey.py
 ```
@@ -36,7 +26,7 @@ Grafana password), then provisions every server in dependency order — backends
 (log-stack → malware-catalog), then honeypots — threading `LOKI_HOST` and `CATALOG_URL`
 forward automatically.
 
-**4. Verify**
+**3. Verify**
 ```
 python honey.py
 ```
