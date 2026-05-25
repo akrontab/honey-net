@@ -167,6 +167,34 @@ def _load_ts_api_key():
     return key
 
 
+def _load_optional_key(label, key_file_name, url):
+    """Prompt for an optional API key, reading from ~/.honey-net-<name> if saved.
+
+    Returns the key string, or "" if the user skips.
+    """
+    key_file = Path.home() / key_file_name
+    if key_file.exists():
+        key = key_file.read_text().strip()
+        if key:
+            print(f"  {label}: loaded from ~/{key_file_name}")
+            return key
+    print(f"\n  {label} (optional — press Enter to skip)")
+    print(f"  Get one at: {url}")
+    key = getpass.getpass(f"  {label}: ").strip()
+    if not key:
+        print(f"  Skipping {label}.")
+        return ""
+    answer = input(f"  Save to ~/{key_file_name} for future use? [y/N] ").strip().lower()
+    if answer == "y":
+        key_file.write_text(key)
+        try:
+            os.chmod(key_file, 0o600)
+        except Exception:
+            pass
+        print("  Saved.")
+    return key
+
+
 def _gen_ts_key(api_key, *, ephemeral=False):
     import requests
     body = {
@@ -292,7 +320,8 @@ def _scp(pkg_dir, key, pub_ip, *, retries=6, delay=10):
 # ── Provision one server ──────────────────────────────────────────────────────
 
 def _provision(server, state, ts_api_key, *, grafana_password="",
-               loki_host="", catalog_url="", force=False):
+               loki_host="", catalog_url="", vt_api_key="",
+               triage_api_key="", force=False):
     name   = server["name"]
     stype  = server["type"]
     key    = ssh_key(server["ssh_key"])
@@ -338,6 +367,9 @@ def _provision(server, state, ts_api_key, *, grafana_password="",
             env["LOKI_HOST"] = loki_host
         if catalog_url and stype == "honeypot":
             env["CATALOG_URL"] = catalog_url
+    if name == "malware-catalog":
+        env["VT_API_KEY"] = vt_api_key
+        env["TRIAGE_API_KEY"] = triage_api_key
     if stype == "honeypot":
         env["HONEYPOT_HOSTNAME"] = name
 
@@ -425,8 +457,10 @@ def main():
             if s.get("ssh_key"):
                 check_or_create(s["ssh_key"])
 
-    ts_api_key     = ""
+    ts_api_key       = ""
     grafana_password = ""
+    vt_api_key       = ""
+    triage_api_key   = ""
     if ordered:
         ts_api_key = _load_ts_api_key()
         if any(s["name"] == "log-stack" for s in ordered):
@@ -434,6 +468,19 @@ def main():
             grafana_password = getpass.getpass("Grafana admin password: ")
             if not grafana_password:
                 sys.exit("Grafana admin password is required.")
+        if any(s["name"] == "malware-catalog" for s in ordered):
+            print("\n── malware-catalog enrichment keys (optional) ────────────────")
+            vt_api_key = _load_optional_key(
+                "VirusTotal API key",
+                ".honey-net-vt-apikey",
+                "virustotal.com/gui/my-apikey",
+            )
+            triage_api_key = _load_optional_key(
+                "Triage API key",
+                ".honey-net-triage-apikey",
+                "tria.ge/account/api",
+            )
+            print("──────────────────────────────────────────────────────────────")
 
     # ── Phase 1: Terraform ────────────────────────────────────────────────────
     if args.skip_terraform:
@@ -471,6 +518,8 @@ def main():
             grafana_password=grafana_password,
             loki_host=loki_host,
             catalog_url=catalog_url,
+            vt_api_key=vt_api_key,
+            triage_api_key=triage_api_key,
             force=args.force,
         )
 
