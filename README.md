@@ -46,11 +46,11 @@ Select **logs** to pull log files locally. Open Grafana at `http://<log-stack-ta
 │  │  Nanode $5/mo        │  │  └──────────────────────────────────────────┘   │
 │  └──────────────────────┘  │                                                 │
 │                            │  ┌──────────────────────────────────────────┐   │
-│  ┌──────────────────────┐  │  │            malware-catalog               │   │
-│  │   honeypot server    │──┘  │  ui (nginx) · API · SQLite               │   │
-│  │  + malware-sender    │────▶│  Nanode $5/mo                            │   │
-│  │  Nanode $5/mo        │     └──────────────────────────────────────────┘   │
-│  └──────────────────────┘                                                    │
+│                            └─▶│            malware-catalog               │   │
+│                               │  ui (nginx) · API · SQLite               │   │
+│                               │  Nanode $5/mo                            │   │
+│                               └──────────────────────────────────────────┘   │
+│                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -105,50 +105,9 @@ honey-net/
 ./setup.sh
 source .venv/bin/activate
 ```
+**2. Linode API token** — cloud.linode.com → Profile → API Tokens → Create (Read/Write Linodes scope).
 
-**2. SSH key pairs** — one per server, path set in `honey-net.json`:
-```powershell
-ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\log-stack-linode"
-ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\mysql-ssh-honeypot"
-```
-
-**3. Tailscale account** — [tailscale.com](https://tailscale.com) (free tier). Generate auth keys before each deploy:
-```
-python gen_ts_key.py              # log-stack and other backends
-python gen_ts_key.py --ephemeral  # honeypot servers (auto-removed on destroy)
-```
-
-**4. Linode API token** — cloud.linode.com → Profile → API Tokens → Create (Read/Write Linodes scope).
-
-## Deployment order
-
-### 1. Provision infrastructure
-
-```powershell
-cd terraform
-copy terraform.tfvars.example terraform.tfvars
-# Add linode_token to terraform.tfvars
-terraform init && terraform apply
-cd ..
-python sync_ips.py
-```
-
-### 2. Provision log-stack first
-
-```
-python provision.py --server log-stack
-```
-
-Prompts for Tailscale API key and Grafana admin password, then runs end-to-end setup
-and writes the log-stack Tailscale IP to `state.json`.
-
-### 3. Provision honeypots
-
-```
-python provision.py --server mysql-ssh
-```
-
-Reads `LOKI_HOST` from `state.json` automatically.
+**3. Tailscale API key** — tailscale.com → Settings → Keys → Generate API key. Saved to `~/.tailscale-apikey` on first use; subsequent runs read it from there automatically.
 
 ## honey.py — interactive launcher
 
