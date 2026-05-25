@@ -196,6 +196,19 @@ def component_build_services(name: str, base: str) -> list[str]:
     ]
 
 
+def backend_build_services(name: str) -> list[str]:
+    """Return Docker service names that have a build: context in a backend server's compose file."""
+    compose_path = REPO_ROOT / name / "deploy" / "docker-compose.yml"
+    if not compose_path.exists() or yaml is None:
+        return []
+    compose = yaml.safe_load(compose_path.read_text(encoding="utf-8"))
+    return [
+        svc_name
+        for svc_name, svc_def in (compose.get("services") or {}).items()
+        if isinstance(svc_def, dict) and "build" in svc_def
+    ]
+
+
 def assemble_honeypot_package(server, pkg_dir):
     """
     Populates pkg_dir with the honeypot deploy package:

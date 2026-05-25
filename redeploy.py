@@ -9,7 +9,7 @@ from pathlib import Path
 
 from lib.config import REPO_ROOT, load_manifest, load_state
 from lib.files import copy_tree
-from lib.package import assemble_honeypot_package, component_build_services
+from lib.package import assemble_honeypot_package, backend_build_services, component_build_services
 from lib.server import select_server
 from lib.ssh import DEVNULL, ssh_key
 
@@ -92,7 +92,12 @@ def main():
         else:
             restart_cmd = f"{rsync_cmd} && {compose_cmd} up -d"
     else:
-        restart_cmd = f"{rsync_cmd} && {compose_cmd} up -d"
+        build_svcs = backend_build_services(name)
+        build_cmds = " && ".join(f"{compose_cmd} build {svc}" for svc in build_svcs)
+        if build_cmds:
+            restart_cmd = f"{rsync_cmd} && {build_cmds} && {compose_cmd} up -d"
+        else:
+            restart_cmd = f"{rsync_cmd} && {compose_cmd} up -d"
 
     print(f"Restarting stack on {name}...")
     r = subprocess.run(["ssh"] + ssh_opts + [remote, restart_cmd])

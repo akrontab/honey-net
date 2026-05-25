@@ -10,7 +10,7 @@ Accounts needed: [Linode](https://linode.com) (API token) · [Tailscale](https:/
 
 **1. Clone and set up**
 ```powershell
-git clone https://github.com/your-org/honey-net
+git clone https://github.com/akrontab/honey-net
 cd honey-net
 .\setup.ps1                  # macOS/Linux: ./setup.sh
 .venv\Scripts\activate
@@ -27,50 +27,46 @@ cd ..
 python honey.py sync         # writes public IPs to state.json
 ```
 
-**3. Provision log-stack** (Grafana + Loki — do this first)
+**3. Provision all servers**
 ```
-python honey.py provision    # select: log-stack
-# prompts for: Tailscale API key, Grafana admin password
+python honey.py
 ```
-Generates a Tailscale auth key, deploys files, runs setup end-to-end, and writes the
-log-stack Tailscale IP to `state.json`.
+Select **provision**. Prompts for credentials upfront (Linode token, Tailscale API key,
+Grafana password), then provisions every server in dependency order — backends first
+(log-stack → malware-catalog), then honeypots — threading `LOKI_HOST` and `CATALOG_URL`
+forward automatically.
 
-**4. Provision honeypots**
+**4. Verify**
 ```
-python honey.py provision    # select: your honeypot server
+python honey.py
 ```
-Reads `LOKI_HOST` from `state.json` automatically.
-
-**5. Verify**
-```
-python honey.py logs         # pull log files locally
-```
-Open Grafana at `http://<log-stack-tailscale-ip>:3000` — logs appear under `{job="cowrie"}`, `{job="mysql"}`.
+Select **logs** to pull log files locally. Open Grafana at `http://<log-stack-tailscale-ip>:3000` — logs appear under `{job="cowrie"}`, `{job="mysql"}`.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Tailscale VPN                           │
-│                                                                 │
-│  ┌──────────────────────┐                                       │
-│  │   honeypot server    │──┐  ┌──────────────────────────────┐  │
-│  │  service(s) + Vector │  │  │          log-stack           │  │
-│  │  Nanode $5/mo        │  ├─▶│  Loki · Grafana              │  │
-│  └──────────────────────┘  │  │  Nanode $5/mo                │  │
-│                            │  └──────────────────────────────┘  │
-│  ┌──────────────────────┐  │                                    │
-│  │   honeypot server    │──┘                                    │
-│  │  service(s) + Vector │                                       │
-│  │  Nanode $5/mo        │                                       │
-│  └──────────────────────┘                                       │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                                Tailscale VPN                                 │
+│                                                                              │
+│  ┌──────────────────────┐     ┌──────────────────────────────────────────┐   │
+│  │   honeypot server    │──┐  │               log-stack                  │   │
+│  │  service(s) + Vector │  ├─▶│  Loki · Grafana · Nanode $5/mo           │   │
+│  │  Nanode $5/mo        │  │  └──────────────────────────────────────────┘   │
+│  └──────────────────────┘  │                                                 │
+│                            │  ┌──────────────────────────────────────────┐   │
+│  ┌──────────────────────┐  │  │            malware-catalog               │   │
+│  │   honeypot server    │──┘  │  ui (nginx) · API · SQLite               │   │
+│  │  + malware-sender    │────▶│  Nanode $5/mo                            │   │
+│  │  Nanode $5/mo        │     └──────────────────────────────────────────┘   │
+│  └──────────────────────┘                                                    │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 - **Honeypot servers** run one or more service packages (Cowrie SSH/Telnet, MySQL emulator) plus a Vector sidecar that ships logs to Loki over Tailscale. Public-facing.
 - **Log-stack** runs Grafana + Loki. Receives logs from all honeypots. Never exposed to the public internet — Tailscale only.
+- **Malware-catalog** receives malware samples from honeypots running the `malware-sender` addon. Deduplicates by SHA-256. Web UI + REST API served via nginx, API backend internal-only.
 - Real SSH on every host is port **65022**, Tailscale-only. Port 22 goes to the honeypot.
 
 ## Repo layout
