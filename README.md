@@ -109,6 +109,16 @@ source .venv/bin/activate
 
 **3. Tailscale API key** — tailscale.com → Settings → Keys → Generate API key. Saved to `~/.tailscale-apikey` on first use; subsequent runs read it from there automatically.
 
+### Optional — malware-catalog enrichment
+
+The catalog runs three enrichment workers alongside the API. The first (`static-analyzer`: YARA, IOC extraction, ssdeep, PE/ELF parsing) needs no setup. The other two only run if you provide a key:
+
+**4. VirusTotal API key** *(optional, enables AV verdict enrichment)* — [virustotal.com/gui/my-apikey](https://www.virustotal.com/gui/my-apikey). Free tier (4 req/min) is enough. Lookup-only; the catalog never uploads samples to VT.
+
+**5. Triage API key** *(optional, enables dynamic sandbox analysis)* — [tria.ge/account/api](https://tria.ge/account/api). Free public tier available. Submissions are **public**, so by default only ELF/PE samples (already public via MalwareBazaar) are uploaded.
+
+Both keys go in `malware-catalog/deploy/.env` on the catalog server (see `.env.example`). Without them, `intel-fetcher` runs MalwareBazaar lookups only and `sandbox-submitter` stays off. Apply with `python redeploy.py --server malware-catalog`.
+
 ## honey.py — interactive launcher
 
 `python honey.py` opens a numbered menu for all commands. Select a command; for options that vary (e.g. ephemeral vs. persistent Tailscale key, pre-setup vs. normal SSH), it prompts before running.
