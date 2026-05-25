@@ -21,7 +21,7 @@ def select_server(servers, state, name_arg=None, filter_fn=None, prompt="Select 
         return candidates[0]
 
     print(f"\n{prompt}:")
-    for i, s in enumerate(candidates):
+    for i, s in enumerate(candidates, start=1):
         e      = state.get(s["name"], {})
         pub_ip = e.get("public_ip")    or "(no public IP)"
         ts_ip  = e.get("tailscale_ip") or "(no Tailscale IP)"
@@ -30,6 +30,6 @@ def select_server(servers, state, name_arg=None, filter_fn=None, prompt="Select 
               f"ports={ports:<12} public={pub_ip:<16} tailscale={ts_ip}")
     print()
     choice = input("Enter number: ").strip()
-    if not choice.isdigit() or int(choice) >= len(candidates):
+    if not choice.isdigit() or not (1 <= int(choice) <= len(candidates)):
         sys.exit("Invalid selection")
-    return candidates[int(choice)]
+    return candidates[int(choice) - 1]
