@@ -75,40 +75,10 @@
       }]
     },
     {
-      "id": 3,
-      "type": "stat",
-      "title": "Login Attempts",
-      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
-      "datasource": {"type": "loki", "uid": "loki"},
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "fixed", "fixedColor": "orange"},
-          "unit": "short",
-          "thresholds": {"mode": "absolute", "steps": [{"color": "orange", "value": null}]}
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
-        "textMode": "auto"
-      },
-      "targets": [{
-        "datasource": {"type": "loki", "uid": "loki"},
-        "expr": "sum(count_over_time({job=\"mysql\"} | json | event=\"login\" [$__range]))",
-        "instant": true,
-        "queryType": "instant",
-        "refId": "A"
-      }]
-    },
-    {
       "id": 4,
       "type": "stat",
       "title": "SQL Queries",
-      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
       "datasource": {"type": "loki", "uid": "loki"},
       "fieldConfig": {
         "defaults": {
@@ -306,29 +276,6 @@
       "targets": [{
         "datasource": {"type": "loki", "uid": "loki"},
         "expr": "{job=\"mysql\"} | json | event=\"query\"",
-        "queryType": "range",
-        "refId": "A"
-      }]
-    },
-    {
-      "id": 10,
-      "type": "logs",
-      "title": "Recent Login Attempts",
-      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 32},
-      "datasource": {"type": "loki", "uid": "loki"},
-      "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "prettifyLogMessage": true,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "wrapLogMessage": false
-      },
-      "targets": [{
-        "datasource": {"type": "loki", "uid": "loki"},
-        "expr": "{job=\"mysql\"} | json | event=\"login\"",
         "queryType": "range",
         "refId": "A"
       }]

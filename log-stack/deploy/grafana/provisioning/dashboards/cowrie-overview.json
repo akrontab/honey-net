@@ -18,7 +18,7 @@
       "id": 1,
       "type": "stat",
       "title": "Connections",
-      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "gridPos": {"h": 4, "w": 12, "x": 0, "y": 0},
       "datasource": {"type": "loki", "uid": "loki"},
       "fieldConfig": {
         "defaults": {
@@ -48,7 +48,7 @@
       "id": 2,
       "type": "stat",
       "title": "Unique Attacker IPs",
-      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "gridPos": {"h": 4, "w": 12, "x": 12, "y": 0},
       "datasource": {"type": "loki", "uid": "loki"},
       "fieldConfig": {
         "defaults": {
@@ -75,133 +75,10 @@
       }]
     },
     {
-      "id": 3,
-      "type": "stat",
-      "title": "Failed Logins",
-      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
-      "datasource": {"type": "loki", "uid": "loki"},
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "fixed", "fixedColor": "red"},
-          "unit": "short",
-          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}]}
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
-        "textMode": "auto"
-      },
-      "targets": [{
-        "datasource": {"type": "loki", "uid": "loki"},
-        "expr": "sum(count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.login.failed\" [$__range]))",
-        "instant": true,
-        "queryType": "instant",
-        "refId": "A"
-      }]
-    },
-    {
-      "id": 4,
-      "type": "stat",
-      "title": "Successful Logins",
-      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
-      "datasource": {"type": "loki", "uid": "loki"},
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "fixed", "fixedColor": "green"},
-          "unit": "short",
-          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
-        "textMode": "auto"
-      },
-      "targets": [{
-        "datasource": {"type": "loki", "uid": "loki"},
-        "expr": "sum(count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.login.success\" [$__range]))",
-        "instant": true,
-        "queryType": "instant",
-        "refId": "A"
-      }]
-    },
-    {
-      "id": 5,
-      "type": "timeseries",
-      "title": "Login Attempts / sec",
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 4},
-      "datasource": {"type": "loki", "uid": "loki"},
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "palette-classic"},
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {"group": "A", "mode": "none"}
-          },
-          "unit": "short"
-        },
-        "overrides": [
-          {
-            "matcher": {"id": "byName", "options": "Failed"},
-            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]
-          },
-          {
-            "matcher": {"id": "byName", "options": "Successful"},
-            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "green"}}]
-          },
-          {
-            "matcher": {"id": "byName", "options": "Connections"},
-            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "blue"}}]
-          }
-        ]
-      },
-      "options": {
-        "legend": {"calcs": ["max"], "displayMode": "list", "placement": "bottom", "showLegend": true},
-        "tooltip": {"mode": "multi", "sort": "desc"}
-      },
-      "targets": [
-        {
-          "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "sum(count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.login.failed\" [$__interval]))",
-          "legendFormat": "Failed",
-          "queryType": "range",
-          "refId": "A"
-        },
-        {
-          "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "sum(count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.login.success\" [$__interval]))",
-          "legendFormat": "Successful",
-          "queryType": "range",
-          "refId": "B"
-        },
-        {
-          "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "sum(count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.session.connect\" [$__interval]))",
-          "legendFormat": "Connections",
-          "queryType": "range",
-          "refId": "C"
-        }
-      ]
-    },
-    {
       "id": 6,
       "type": "table",
       "title": "Top Usernames",
-      "gridPos": {"h": 10, "w": 8, "x": 0, "y": 12},
+      "gridPos": {"h": 10, "w": 8, "x": 0, "y": 4},
       "datasource": {"type": "loki", "uid": "loki"},
       "fieldConfig": {
         "defaults": {
@@ -231,7 +108,7 @@
       "id": 7,
       "type": "table",
       "title": "Top Passwords",
-      "gridPos": {"h": 10, "w": 8, "x": 8, "y": 12},
+      "gridPos": {"h": 10, "w": 8, "x": 8, "y": 4},
       "datasource": {"type": "loki", "uid": "loki"},
       "fieldConfig": {
         "defaults": {
@@ -261,7 +138,7 @@
       "id": 8,
       "type": "table",
       "title": "Top Source IPs",
-      "gridPos": {"h": 10, "w": 8, "x": 16, "y": 12},
+      "gridPos": {"h": 10, "w": 8, "x": 16, "y": 4},
       "datasource": {"type": "loki", "uid": "loki"},
       "fieldConfig": {
         "defaults": {
@@ -286,29 +163,6 @@
       "transformations": [
         {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"src_ip": "Source IP", "Value #A": "Count"}}}
       ]
-    },
-    {
-      "id": 9,
-      "type": "logs",
-      "title": "Successful Logins (live)",
-      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 22},
-      "datasource": {"type": "loki", "uid": "loki"},
-      "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "prettifyLogMessage": true,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "wrapLogMessage": false
-      },
-      "targets": [{
-        "datasource": {"type": "loki", "uid": "loki"},
-        "expr": "{job=\"cowrie\"} | json | eventid=\"cowrie.login.success\"",
-        "queryType": "range",
-        "refId": "A"
-      }]
     }
   ]
 }

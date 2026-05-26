@@ -188,10 +188,3 @@ python scripts/sync_ips.py
 3. Run `python honey.py provision --server <name>` — creates the VM and runs full setup.
 
 No changes to `terraform/main.tf` or any root script are needed.
-
-## Currently deployed honeypots
-
-| Package | Protocols | Ports | Captures |
-|---------|-----------|-------|---------|
-| cowrie | SSH, Telnet | 22, 23 | Sessions, commands, malware downloads, attacker SSH keys |
-| mysql | MySQL | 3306 | Credentials (username), SQL queries, database enumeration |
