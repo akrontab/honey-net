@@ -1,0 +1,417 @@
+{
+  "title": "MySQL — Query Intelligence",
+  "uid": "mysql-query-intel",
+  "description": "MySQL attacker kill-chain funnel and query intent classification (recon, setup, harvest, destructive)",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {"from": "now-24h", "to": "now"},
+  "timepicker": {},
+  "refresh": "1m",
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "tags": ["honeypot", "mysql"],
+  "links": [],
+  "annotations": {"list": []},
+  "templating": {"list": []},
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Connected",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "blue"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"mysql\"} | json | event=\"connect\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Logged In",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "orange"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "orange", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"mysql\"} | json | event=\"login\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Ran SQL Queries",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "red"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"mysql\"} | json | event=\"query\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Unique IPs That Queried",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "purple"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "purple", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "count(sum by (src_ip) (count_over_time({job=\"mysql\"} | json | event=\"query\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Recon Queries",
+      "description": "SHOW DATABASES, SHOW TABLES, information_schema lookups",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 4},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "blue"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"mysql\"} | json | event=\"query\" | query =~ \"(?i)SHOW|information_schema|DESCRIBE\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Setup Queries",
+      "description": "SET, USE, AUTOCOMMIT — session initialization before actual work",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 4},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "orange"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "orange", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"mysql\"} | json | event=\"query\" | query =~ \"(?i)^SET |^USE \" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Harvest Queries",
+      "description": "SELECT statements — attacker reading data from tables",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 4},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "yellow"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "yellow", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"mysql\"} | json | event=\"query\" | query =~ \"(?i)^SELECT\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Destructive Queries",
+      "description": "DROP, TRUNCATE, DELETE, INSERT, UPDATE — data manipulation attempts",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 4},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "red"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"mysql\"} | json | event=\"query\" | query =~ \"(?i)DROP|TRUNCATE|DELETE|INSERT|UPDATE\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Query Intent Over Time",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {"group": "A", "mode": "none"}
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Recon"},
+            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "blue"}}]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Setup"},
+            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "orange"}}]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Harvest"},
+            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "yellow"}}]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Destructive"},
+            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]
+          }
+        ]
+      },
+      "options": {
+        "legend": {"calcs": ["max"], "displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"mysql\"} | json | event=\"query\" | query =~ \"(?i)SHOW|information_schema|DESCRIBE\" [$__interval]))",
+          "legendFormat": "Recon",
+          "queryType": "range",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"mysql\"} | json | event=\"query\" | query =~ \"(?i)^SET |^USE \" [$__interval]))",
+          "legendFormat": "Setup",
+          "queryType": "range",
+          "refId": "B"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"mysql\"} | json | event=\"query\" | query =~ \"(?i)^SELECT\" [$__interval]))",
+          "legendFormat": "Harvest",
+          "queryType": "range",
+          "refId": "C"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"mysql\"} | json | event=\"query\" | query =~ \"(?i)DROP|TRUNCATE|DELETE|INSERT|UPDATE\" [$__interval]))",
+          "legendFormat": "Destructive",
+          "queryType": "range",
+          "refId": "D"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Top SQL Query Strings",
+      "description": "Most-repeated SQL statements — SET AUTOCOMMIT and SHOW DATABASES dominate; watch for SELECT targeting user/wallet/key tables",
+      "gridPos": {"h": 14, "w": 12, "x": 0, "y": 16},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true, "width": 0}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Count"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(20, sum by (query) (count_over_time({job=\"mysql\"} | json | event=\"query\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{query}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"query": "SQL Query", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Top Databases Probed",
+      "description": "Database names attackers look for — crypto wallets, ecommerce DBs, and CMS installs are common targets",
+      "gridPos": {"h": 14, "w": 12, "x": 12, "y": 16},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Count"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(20, sum by (database) (count_over_time({job=\"mysql\"} | json | event=\"login\" | database != \"\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{database}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"database": "Database Name", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 12,
+      "type": "logs",
+      "title": "Recent SQL Queries (live)",
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 30},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "{job=\"mysql\"} | json | event=\"query\"",
+        "queryType": "range",
+        "refId": "A"
+      }]
+    }
+  ]
+}

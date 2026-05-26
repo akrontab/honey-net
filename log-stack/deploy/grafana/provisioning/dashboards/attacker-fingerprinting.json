@@ -1,0 +1,281 @@
+{
+  "title": "Attacker Fingerprinting",
+  "uid": "attacker-fingerprinting",
+  "description": "SSH client version banners, HASSH fingerprints, and public key reuse across IPs",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {"from": "now-24h", "to": "now"},
+  "timepicker": {},
+  "refresh": "1m",
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "tags": ["honeypot", "cowrie", "fingerprinting"],
+  "links": [],
+  "annotations": {"list": []},
+  "templating": {"list": []},
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Unique SSH Client Banners",
+      "gridPos": {"h": 4, "w": 8, "x": 0, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "blue"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "count(sum by (version) (count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.client.version\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Unique HASSH Fingerprints",
+      "gridPos": {"h": 4, "w": 8, "x": 8, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "orange"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "orange", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "count(sum by (hassh) (count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.client.kex\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Public Key Fingerprints Seen",
+      "gridPos": {"h": 4, "w": 8, "x": 16, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "purple"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "purple", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "count(sum by (fingerprint) (count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.client.fingerprint\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Fingerprint Events Over Time",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 4},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {"group": "A", "mode": "none"}
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Client Version"},
+            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "blue"}}]
+          },
+          {
+            "matcher": {"id": "byName", "options": "HASSH"},
+            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "orange"}}]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Public Key"},
+            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "purple"}}]
+          }
+        ]
+      },
+      "options": {
+        "legend": {"calcs": ["max"], "displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.client.version\" [$__interval]))",
+          "legendFormat": "Client Version",
+          "queryType": "range",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.client.kex\" [$__interval]))",
+          "legendFormat": "HASSH",
+          "queryType": "range",
+          "refId": "B"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.client.fingerprint\" [$__interval]))",
+          "legendFormat": "Public Key",
+          "queryType": "range",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Top SSH Client Banners",
+      "description": "Tool/library used by attacker (ZGrab = scanner, libssh = scripted brute, Go/Python = custom tool)",
+      "gridPos": {"h": 14, "w": 12, "x": 0, "y": 12},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Count"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(20, sum by (version) (count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.client.version\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{version}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"version": "SSH Client Banner", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Top HASSH Fingerprints",
+      "description": "MD5 of SSH client's kex/cipher/mac/compression algorithms — stable per tool version, useful for clustering",
+      "gridPos": {"h": 14, "w": 12, "x": 12, "y": 12},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Count"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(20, sum by (hassh) (count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.client.kex\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{hassh}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"hassh": "HASSH", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Public Key Fingerprints (Reuse = Botnet Indicator)",
+      "description": "Same key fingerprint from multiple IPs indicates a distributed botnet sharing credentials",
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 26},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Count"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(20, sum by (fingerprint) (count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.client.fingerprint\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{fingerprint}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"fingerprint": "Key Fingerprint", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 8,
+      "type": "logs",
+      "title": "Live Client Fingerprint Events",
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 36},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "{job=\"cowrie\"} | json | eventid=\"cowrie.client.fingerprint\"",
+        "queryType": "range",
+        "refId": "A"
+      }]
+    }
+  ]
+}

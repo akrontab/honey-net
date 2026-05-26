@@ -1,0 +1,428 @@
+{
+  "title": "Attacker Drill-Down",
+  "uid": "attacker-drilldown",
+  "description": "Per-IP view across all honeypot surfaces. Enter a source IP to see every interaction it had — SSH, Telnet, MySQL, commands, downloads.",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {"from": "now-7d", "to": "now"},
+  "timepicker": {},
+  "refresh": "1m",
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "tags": ["honeypot", "investigation"],
+  "links": [],
+  "annotations": {"list": []},
+  "templating": {
+    "list": [
+      {
+        "hide": 0,
+        "label": "Source IP",
+        "name": "src_ip",
+        "options": [{"selected": true, "text": "", "value": ""}],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox",
+        "current": {"value": "", "text": ""}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 0},
+      "options": {
+        "content": "Enter a **Source IP** in the variable box above. Widen the time range if the IP was active in a previous window.",
+        "mode": "markdown"
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "SSH Connections",
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 2},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "blue"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.session.connect\" | protocol=\"ssh\" | src_ip=\"$src_ip\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Telnet Connections",
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 2},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "orange"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "orange", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.session.connect\" | protocol=\"telnet\" | src_ip=\"$src_ip\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "MySQL Connections",
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 2},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "purple"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "purple", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"mysql\"} | json | event=\"connect\" | src_ip=\"$src_ip\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Commands Run",
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 2},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "red"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.command.input\" | src_ip=\"$src_ip\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Files Downloaded",
+      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 2},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "red"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.session.file_download\" | src_ip=\"$src_ip\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "MySQL Queries",
+      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 2},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "purple"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "purple", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"mysql\"} | json | event=\"query\" | src_ip=\"$src_ip\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Activity Timeline",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 6},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {"group": "A", "mode": "none"}
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"calcs": ["sum"], "displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.session.connect\" | src_ip=\"$src_ip\" [$__interval]))",
+          "legendFormat": "Cowrie Connect",
+          "queryType": "range",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.command.input\" | src_ip=\"$src_ip\" [$__interval]))",
+          "legendFormat": "Commands",
+          "queryType": "range",
+          "refId": "B"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"mysql\"} | json | event=~\"connect|query\" | src_ip=\"$src_ip\" [$__interval]))",
+          "legendFormat": "MySQL",
+          "queryType": "range",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Commands Executed",
+      "gridPos": {"h": 14, "w": 12, "x": 0, "y": 14},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Count"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(25, sum by (input) (count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.command.input\" | src_ip=\"$src_ip\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{input}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"input": "Command", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Files Downloaded",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 14},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Downloads"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(15, sum by (url) (count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.session.file_download\" | src_ip=\"$src_ip\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{url}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"url": "URL", "Value #A": "Downloads"}}}
+      ]
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "SSH Client Fingerprints",
+      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 22},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": false}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Count"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(5, sum by (version) (count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.client.version\" | src_ip=\"$src_ip\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{version}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"version": "SSH Client Banner", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 12,
+      "type": "table",
+      "title": "MySQL Queries",
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 28},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Count"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(15, sum by (query) (count_over_time({job=\"mysql\"} | json | event=\"query\" | src_ip=\"$src_ip\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{query}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"query": "SQL Query", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 13,
+      "type": "logs",
+      "title": "All Cowrie Events From This IP",
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 28},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Ascending",
+        "wrapLogMessage": true
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "{job=\"cowrie\"} | json | src_ip=\"$src_ip\"",
+        "queryType": "range",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 14,
+      "type": "logs",
+      "title": "All MySQL Events From This IP",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 40},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Ascending",
+        "wrapLogMessage": true
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "{job=\"mysql\"} | json | src_ip=\"$src_ip\"",
+        "queryType": "range",
+        "refId": "A"
+      }]
+    }
+  ]
+}

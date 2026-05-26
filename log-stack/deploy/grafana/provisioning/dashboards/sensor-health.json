@@ -1,0 +1,336 @@
+{
+  "title": "Sensor Health",
+  "uid": "sensor-health",
+  "description": "Per-job event ingestion rates and freshness — detects silent failures like stale Vector checkpoints or dead honeypot services",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {"from": "now-1h", "to": "now"},
+  "timepicker": {},
+  "refresh": "30s",
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "tags": ["honeypot", "ops"],
+  "links": [],
+  "annotations": {"list": []},
+  "templating": {"list": []},
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Cowrie Events",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "orange", "value": 1},
+              {"color": "green", "value": 100}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"cowrie\"} [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "MySQL Events",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "orange", "value": 1},
+              {"color": "green", "value": 10}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"mysql\"} [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Auth Log Events",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "orange", "value": 1},
+              {"color": "green", "value": 10}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"auth\"} [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Malware Events",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "blue", "value": null},
+              {"color": "green", "value": 1}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"malware\"} [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Event Rate Per Job",
+      "description": "A flat line at zero for any job means Vector has stopped shipping — check checkpoint freshness and service status",
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 4},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 5,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {"group": "A", "mode": "none"}
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"calcs": ["max", "last"], "displayMode": "table", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"cowrie\"} [$__interval]))",
+          "legendFormat": "cowrie",
+          "queryType": "range",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"mysql\"} [$__interval]))",
+          "legendFormat": "mysql",
+          "queryType": "range",
+          "refId": "B"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"auth\"} [$__interval]))",
+          "legendFormat": "auth",
+          "queryType": "range",
+          "refId": "C"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"syslog\"} [$__interval]))",
+          "legendFormat": "syslog",
+          "queryType": "range",
+          "refId": "D"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"malware\"} [$__interval]))",
+          "legendFormat": "malware",
+          "queryType": "range",
+          "refId": "E"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Events Per Job in Window",
+      "description": "Red = no events received. A live honeypot under attack should always have cowrie events.",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 14},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "custom": {"align": "left", "displayMode": "auto", "filterable": false},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "orange", "value": 1},
+              {"color": "green", "value": 50}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Events"}]
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"cowrie\"} [$__range]))",
+          "instant": true,
+          "queryType": "instant",
+          "legendFormat": "cowrie",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"mysql\"} [$__range]))",
+          "instant": true,
+          "queryType": "instant",
+          "legendFormat": "mysql",
+          "refId": "B"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"auth\"} [$__range]))",
+          "instant": true,
+          "queryType": "instant",
+          "legendFormat": "auth",
+          "refId": "C"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"syslog\"} [$__range]))",
+          "instant": true,
+          "queryType": "instant",
+          "legendFormat": "syslog",
+          "refId": "D"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"malware\"} [$__range]))",
+          "instant": true,
+          "queryType": "instant",
+          "legendFormat": "malware",
+          "refId": "E"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {"Time": true},
+            "renameByName": {"Field": "Job", "Value #A": "cowrie", "Value #B": "mysql", "Value #C": "auth", "Value #D": "syslog", "Value #E": "malware"}
+          }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "logs",
+      "title": "Recent Syslog (vector / docker health signals)",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 22},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "{job=\"syslog\"}",
+        "queryType": "range",
+        "refId": "A"
+      }]
+    }
+  ]
+}
