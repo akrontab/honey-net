@@ -1,6 +1,8 @@
 import asyncio
 import random
 import struct
+import uuid
+from datetime import datetime, timezone
 
 from config import SERVER_VERSION
 from logger import log_event
@@ -15,14 +17,17 @@ class MySQLHoneypot(asyncio.Protocol):
     """
 
     def connection_made(self, transport):
-        self.transport  = transport
-        self.peer       = transport.get_extra_info("peername") or ("0.0.0.0", 0)
-        self.buf        = b""
-        self.authed     = False
-        self.username   = None
+        self.transport     = transport
+        self.peer          = transport.get_extra_info("peername") or ("0.0.0.0", 0)
+        self.buf           = b""
+        self.authed        = False
+        self.username      = None
         self.query_handler = QueryHandler()
+        self.conn_id       = uuid.uuid4().hex[:8]
+        self._connect_time = datetime.now(timezone.utc)
+        self._queries      = []
 
-        log_event("connect", self.peer)
+        log_event("connect", self.peer, conn_id=self.conn_id)
         self.transport.write(make_packet(0, self._build_greeting()))
 
     def data_received(self, data):
@@ -40,7 +45,17 @@ class MySQLHoneypot(asyncio.Protocol):
                 self._handle_command(payload, seq)
 
     def connection_lost(self, exc):
-        log_event("disconnect", self.peer, username=self.username)
+        duration = (datetime.now(timezone.utc) - self._connect_time).total_seconds()
+        log_event(
+            "session", self.peer,
+            conn_id=self.conn_id,
+            username=self.username,
+            database=self.query_handler.current_db,
+            duration_s=round(duration, 3),
+            query_count=len(self._queries),
+            queries=self._queries,
+        )
+        log_event("disconnect", self.peer, conn_id=self.conn_id, username=self.username)
 
     # ── Handshake ─────────────────────────────────────────────────────────────
 
@@ -87,12 +102,12 @@ class MySQLHoneypot(asyncio.Protocol):
                 database = payload[offset:db_end].decode("utf-8", errors="replace")
 
             self.query_handler.set_db(database)
-            log_event("login", self.peer, username=self.username, database=database)
+            log_event("login", self.peer, conn_id=self.conn_id, username=self.username, database=database)
             self.authed = True
             self.transport.write(ok_packet(seq + 1))
 
         except Exception as exc:
-            log_event("parse_error", self.peer, error=str(exc))
+            log_event("parse_error", self.peer, conn_id=self.conn_id, error=str(exc))
             self.transport.close()
 
     # ── Command dispatch ──────────────────────────────────────────────────────
@@ -105,16 +120,17 @@ class MySQLHoneypot(asyncio.Protocol):
         resp_seq = seq + 1
 
         if cmd == 0x01:    # COM_QUIT
-            log_event("quit", self.peer, username=self.username)
+            log_event("quit", self.peer, conn_id=self.conn_id, username=self.username)
             self.transport.close()
 
         elif cmd == 0x02:  # COM_INIT_DB
             self.query_handler.set_db(arg)
-            log_event("use_db", self.peer, username=self.username, database=arg)
+            log_event("use_db", self.peer, conn_id=self.conn_id, username=self.username, database=arg)
             self.transport.write(ok_packet(resp_seq))
 
         elif cmd == 0x03:  # COM_QUERY
-            log_event("query", self.peer, username=self.username, query=arg)
+            self._queries.append(arg)
+            log_event("query", self.peer, conn_id=self.conn_id, username=self.username, query=arg)
             self.transport.write(self.query_handler.handle(arg, resp_seq))
 
         elif cmd == 0x04:  # COM_FIELD_LIST
@@ -126,9 +142,9 @@ class MySQLHoneypot(asyncio.Protocol):
         elif cmd == 0x1b:  # COM_CHANGE_USER
             new_user      = arg.split('\x00')[0] if arg else ""
             self.username = new_user
-            log_event("change_user", self.peer, username=new_user)
+            log_event("change_user", self.peer, conn_id=self.conn_id, username=new_user)
             self.transport.write(ok_packet(resp_seq))
 
         else:
-            log_event("command", self.peer, username=self.username, cmd=cmd, arg=arg[:200])
+            log_event("command", self.peer, conn_id=self.conn_id, username=self.username, cmd=cmd, arg=arg[:200])
             self.transport.write(ok_packet(resp_seq))

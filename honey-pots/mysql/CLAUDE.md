@@ -94,15 +94,23 @@ Shipped to Loki by Vector with `{job="mysql"}`.
 
 ## Captured event types
 
-| Event           | Key fields                      |
-|-----------------|---------------------------------|
-| connect         | src_ip, src_port                |
-| login           | username, database              |
-| query           | username, query (full SQL text) |
-| use_db          | username, database              |
-| change_user     | username                        |
-| command         | cmd (byte), arg (raw)           |
-| quit/disconnect | username                        |
+All events include a `conn_id` field (8-char hex UUID) that groups every event from
+a single TCP connection. Use it to filter all events for one session in Loki.
+
+| Event           | Key fields                                                      |
+|-----------------|-----------------------------------------------------------------|
+| connect         | conn_id, src_ip, src_port                                       |
+| login           | conn_id, username, database                                     |
+| query           | conn_id, username, query (full SQL text)                        |
+| use_db          | conn_id, username, database                                     |
+| change_user     | conn_id, username                                               |
+| command         | conn_id, cmd (byte), arg (raw)                                  |
+| quit/disconnect | conn_id, username                                               |
+| session         | conn_id, username, database, duration_s, query_count, queries[] |
+
+`session` is emitted on `connection_lost()` just before `disconnect`. It contains the
+complete ordered list of SQL queries run during the connection, making it the primary
+event for session-level analysis.
 
 ## Useful LogQL queries
 
@@ -111,6 +119,8 @@ Shipped to Loki by Vector with `{job="mysql"}`.
 {job="mysql"} | json | event = "login"           # credential attempts
 {job="mysql"} | json | event = "query"           # SQL queries
 {job="mysql"} | json | event = "connect"         # unique source IPs
+{job="mysql"} | json | event = "session"         # session summaries (queries[])
+{job="mysql"} | json | conn_id = "a1b2c3d4"      # all events for one session
 {job="auth"}                                     # host auth.log
 ```
 
