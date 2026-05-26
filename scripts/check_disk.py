@@ -3,6 +3,8 @@
 
 import argparse
 import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from lib.color import bold, gray, green, red, yellow
 from lib.config import load_manifest, load_state

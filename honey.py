@@ -3,6 +3,11 @@
 
 import importlib
 import sys
+from pathlib import Path
+
+# Make scripts/ importable as top-level modules (e.g. importlib.import_module("provision"))
+_scripts = Path(__file__).resolve().parent / "scripts"
+sys.path.insert(0, str(_scripts))
 
 from lib.color import _enable_ansi, _c
 

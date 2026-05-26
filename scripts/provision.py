@@ -41,6 +41,8 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(1, str(Path(__file__).resolve().parent))  # for check_ssh_keys
 
 from lib.color import bold, green, gray, yellow
 from lib.config import REPO_ROOT, load_manifest

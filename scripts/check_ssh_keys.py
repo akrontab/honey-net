@@ -4,6 +4,7 @@
 import subprocess
 import sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from lib.color import bold, green, red, yellow
 from lib.config import load_manifest

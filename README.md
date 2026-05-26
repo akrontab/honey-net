@@ -82,20 +82,21 @@ honey-net/
 │       └── vector/           ← ships submission events to Loki
 ├── terraform/                ← infrastructure-as-code
 ├── lib/                      ← shared Python library (config, ssh, color, package…)
+├── scripts/
+│   ├── provision.py          ← end-to-end provisioning (terraform + server setup)
+│   ├── redeploy.py           ← update a live server (Tailscale, port 65022)
+│   ├── connect.py            ← SSH into a server
+│   ├── sync_ips.py           ← write IPs from Terraform + Tailscale to state.json
+│   ├── get_logs.py           ← pull logs from a honeypot
+│   ├── gen_ts_key.py         ← generate a Tailscale auth key
+│   ├── check_ssh_keys.py     ← check / generate SSH keys for all servers
+│   ├── check_logs.py         ← check log stream freshness in Loki
+│   ├── check_disk.py         ← check disk usage on all servers (25 GB Nanode limit)
+│   ├── test_loki.py          ← push a test log to Loki to verify the stack
+│   └── test_honeypot.py      ← run smoke tests for a honeypot type
 ├── honey-net.json            ← server manifest (single source of truth)
 ├── state.json                ← gitignored, written by sync_ips.py
 ├── honey.py                  ← interactive launcher for all commands
-├── provision.py              ← end-to-end provisioning (terraform + server setup)
-├── redeploy.py               ← update a live server (Tailscale, port 65022)
-├── connect.py                ← SSH into a server
-├── sync_ips.py               ← write IPs from Terraform + Tailscale to state.json
-├── get_logs.py               ← pull logs from a honeypot
-├── gen_ts_key.py             ← generate a Tailscale auth key
-├── check_ssh_keys.py         ← check / generate SSH keys for all servers
-├── check_logs.py             ← check log stream freshness in Loki
-├── check_disk.py             ← check disk usage on all servers (25 GB Nanode limit)
-├── test_loki.py              ← push a test log to Loki to verify the stack
-├── test_honeypot.py          ← run smoke tests for a honeypot type
 ├── _lib.py                   ← backward-compat shim for honey-pots/*/test.py
 ├── setup.ps1                 ← one-time local setup (Windows)
 ├── setup.sh                  ← one-time local setup (macOS/Linux)
@@ -174,17 +175,17 @@ python honey.py check-disk --server log-stack
 Or invoke the scripts directly — same flags, same behavior:
 
 ```
-python connect.py --server mysql-ssh
-python redeploy.py --server mysql-ssh
-python get_logs.py --server mysql-ssh
-python sync_ips.py
+python scripts/connect.py --server mysql-ssh
+python scripts/redeploy.py --server mysql-ssh
+python scripts/get_logs.py --server mysql-ssh
+python scripts/sync_ips.py
 ```
 
 ## Adding a honeypot server
 
 1. Add an entry to `honey-net.json` with `name`, `ssh_key`, `honeypots`, `ports`.
 2. Generate an SSH key pair for it.
-3. Run `python provision.py --server <name>` — creates the VM and runs full setup.
+3. Run `python honey.py provision --server <name>` — creates the VM and runs full setup.
 
 No changes to `terraform/main.tf` or any root script are needed.
 
