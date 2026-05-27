@@ -34,9 +34,11 @@ honey-net/                    ← this repo (control plane)
   honey-pots/
     cowrie/                   ← cowrie honeypot package
     mysql/                    ← mysql honeypot package
+    dionaea/                  ← dionaea SMB/FTP honeypot package
   addons/
     metadata/                 ← metadata extractor addon (log → inbox sidecars)
     malware-sender/           ← malware-sender addon (inbox → malware catalog)
+  malware-catalog/            ← malware catalog service (FastAPI + workers)
   server-config/              ← shared host hardening
   log-stack/                  ← Grafana + Loki stack
   terraform/                  ← infrastructure-as-code
@@ -46,17 +48,19 @@ honey-net/                    ← this repo (control plane)
   setup.ps1                   ← one-time local setup (Windows)
   setup.sh                    ← one-time local setup (macOS/Linux)
   honey.py                    ← interactive launcher for all control scripts
-  provision.py                ← end-to-end provisioning (terraform + server setup)
-  redeploy.py                 ← update a live server (port 65022, Tailscale)
-  connect.py                  ← SSH into a server
-  sync_ips.py                 ← write IPs from terraform + Tailscale to state.json
-  get_logs.py                 ← pull logs from a honeypot
-  gen_ts_key.py               ← generate a Tailscale auth key
-  check_ssh_keys.py           ← check / generate SSH keys for all servers
-  check_logs.py               ← check log stream freshness in Loki
-  check_disk.py               ← check disk usage on all servers (25 GB Nanode limit)
-  test_loki.py                ← push a test log to Loki to verify the stack
-  test_honeypot.py            ← run smoke tests for a honeypot type
+  scripts/
+    provision.py              ← end-to-end provisioning (terraform + server setup)
+    redeploy.py               ← update a live server (port 65022, Tailscale)
+    connect.py                ← SSH into a server
+    sync_ips.py               ← write IPs from terraform + Tailscale to state.json
+    get_logs.py               ← pull logs from a honeypot
+    gen_ts_key.py             ← generate a Tailscale auth key
+    check_ssh_keys.py         ← check / generate SSH keys for all servers
+    check_logs.py             ← check log stream freshness in Loki
+    check_disk.py             ← check disk usage on all servers (25 GB Nanode limit)
+    test_loki.py              ← push a test log to Loki to verify the stack
+    test_honeypot.py          ← run smoke tests for a honeypot type
+    analyze_mysql.py          ← per-IP MySQL connection rollup from pulled logs
   lib/                        ← shared library (config, ssh, color, package, server, files)
   _lib.py                     ← backward-compat re-export shim for honey-pots/*/test.py
 ```
@@ -67,11 +71,14 @@ Each component has its own `CLAUDE.md`:
 
 | Path | Contents |
 |------|----------|
+| `honey-pots/CLAUDE.md` | Honeypot package structure, fragment conventions, full checklist |
 | `honey-pots/cowrie/CLAUDE.md` | Cowrie protocol, log paths, gotchas |
 | `honey-pots/mysql/CLAUDE.md` | MySQL emulator, event types, gotchas |
+| `honey-pots/dionaea/CLAUDE.md` | Dionaea SMB/FTP, event types, gotchas |
 | `addons/CLAUDE.md` | Addon package structure, shared inbox, fragment order |
 | `addons/metadata/CLAUDE.md` | Sidecar schema, log formats, offset tracking |
 | `addons/malware-sender/CLAUDE.md` | Submission flow, CLEAN_UP behaviour, gotchas |
+| `malware-catalog/CLAUDE.md` | Module responsibilities, DB-as-queue design, adding enrichment sources |
 | `server-config/CLAUDE.md` | Base setup.sh steps, Tailscale SSH restriction |
 | `log-stack/CLAUDE.md` | Grafana/Loki config, LogQL queries |
 | `terraform/CLAUDE.md` | Terraform usage, for_each design, state keys |
@@ -109,8 +116,8 @@ Before deploying any server:
 3. **Tailscale account** — [tailscale.com](https://tailscale.com). Free tier covers this entire project.
    Generate an auth key for each new host before running `setup.sh`:
    ```
-   python gen_ts_key.py              # backend servers — non-ephemeral (survives reboots)
-   python gen_ts_key.py --ephemeral  # honeypot servers — auto-removed from tailnet on destroy
+   python scripts/gen_ts_key.py              # backend servers — non-ephemeral (survives reboots)
+   python scripts/gen_ts_key.py --ephemeral  # honeypot servers — auto-removed from tailnet on destroy
    ```
    First run prompts for a Tailscale **API key** (tailscale.com → Settings → Keys → Generate API key)
    and saves it to `~/.tailscale-apikey`. Subsequent runs print a fresh auth key.
@@ -131,7 +138,7 @@ terraform init
 terraform plan
 terraform apply
 cd ..
-python sync_ips.py    # reads terraform output + Tailscale API, writes state.json
+python scripts/sync_ips.py    # reads terraform output + Tailscale API, writes state.json
 ```
 
 To destroy all infrastructure:
@@ -144,7 +151,7 @@ cd terraform && terraform destroy
 1. Add an entry to `honey-net.json` with `name`, `type`, `ssh_key`, `ports`, and `honeypots`.
 2. Generate an SSH key pair for the new server.
 3. If it's a new honeypot type, create `honey-pots/<name>/` with the standard layout.
-4. Run `python provision.py --server <name>` — creates the VM via Terraform and runs full setup.
+4. Run `python scripts/provision.py --server <name>` — creates the VM via Terraform and runs full setup.
 
 No changes to `terraform/main.tf` are needed.
 
@@ -155,7 +162,7 @@ Deploy log-stack first — its Tailscale IP is required by Vector on every honey
 ### 1. Deploy log-stack
 
 ```
-python provision.py --server log-stack
+python scripts/provision.py --server log-stack
 ```
 
 Prompts for Tailscale API key (saved to `~/.tailscale-apikey`), Grafana admin password,
@@ -170,7 +177,7 @@ the prompt.
 ### 2. Deploy honeypots
 
 ```
-python provision.py --server mysql-ssh
+python scripts/provision.py --server mysql-ssh
 ```
 
 Same flow. `provision.py` reads `LOKI_HOST` from `state.json` (set in step 1) and passes
@@ -181,7 +188,7 @@ to port 65022 on the Tailscale interface only.
 
 ```
 # Push a test log line to Loki (requires Tailscale running locally)
-python test_loki.py
+python scripts/test_loki.py
 ```
 
 In Grafana (`http://<tailscale-ip>:3000`):
@@ -193,8 +200,8 @@ In Grafana (`http://<tailscale-ip>:3000`):
 ## Re-deploying after changes
 
 ```
-python redeploy.py --server mysql-ssh   # Tailscale required
-python redeploy.py --server log-stack
+python scripts/redeploy.py --server mysql-ssh   # Tailscale required
+python scripts/redeploy.py --server log-stack
 ```
 
 `redeploy.py` copies updated files to the server via Tailscale (port 65022) and runs
@@ -203,7 +210,7 @@ python redeploy.py --server log-stack
 ## Pulling logs
 
 ```
-python get_logs.py --server mysql-ssh   # saves cowrie.json + mysql-honeypot.json to logs/mysql-ssh/
+python scripts/get_logs.py --server mysql-ssh   # saves cowrie.json + mysql-honeypot.json to logs/mysql-ssh/
 ```
 
 ## Useful server commands

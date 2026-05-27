@@ -242,8 +242,8 @@ Use the three-level `sys.path.insert` to reach `_lib.py` at the repo root. Can b
 directly or via the launchers:
 
 ```
-python honey-pots/<name>/test.py   # direct
-python test_honeypot.py <name>     # via root helper (also accessible as `python honey.py test`)
+python honey-pots/<name>/test.py        # direct
+python scripts/test_honeypot.py <name>  # via scripts/ (also accessible as `python honey.py test`)
 ```
 
 ```python
@@ -324,6 +324,6 @@ reads everything it needs from the package at runtime:
 - [ ] Add entry to `honey-net.json` (name, type, ssh_key, honeypots, ports, tailscale_ephemeral)
 - [ ] Generate SSH key pair for the server (`ssh_key` path in honey-net.json)
 - [ ] If it writes catalogable log files: create `deploy/logs.json` (add `log_file` to enable `get_logs.py` pulling)
-- [ ] Run `python provision.py --server <name>` — creates VM, deploys package, runs setup end-to-end
-- [ ] Run `python test_honeypot.py <name>` to verify (or `python honey.py test`)
+- [ ] Run `python scripts/provision.py --server <name>` — creates VM, deploys package, runs setup end-to-end
+- [ ] Run `python scripts/test_honeypot.py <name>` to verify (or `python honey.py test`)
 - [ ] Add a Grafana dashboard to `log-stack/deploy/grafana/provisioning/dashboards/`

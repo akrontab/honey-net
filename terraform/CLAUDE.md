@@ -60,17 +60,17 @@ terraform destroy   # Tear down all hosts (prompts for confirmation)
 After `apply`, run `sync_ips.py` from the honey-net root:
 ```
 cd ..
-python sync_ips.py
+python scripts/sync_ips.py
 ```
 
-This writes `state.json` so all root scripts (`deploy.py`, `connect.py`, etc.) have the server IPs.
+This writes `state.json` so all control scripts (`scripts/redeploy.py`, `scripts/connect.py`, etc.) have the server IPs.
 
 ## Adding a new host
 
 1. Add an entry to `honey-net.json` at the repo root with the server name, type, ssh_key, and honeypots.
 2. Generate an SSH key pair for the new server (path must match `ssh_key` in the JSON).
 3. Run `terraform apply` — the new server is picked up automatically via `for_each`.
-4. Run `python sync_ips.py` to add the new server to `state.json`.
+4. Run `python scripts/sync_ips.py` to add the new server to `state.json`.
 
 No changes to `main.tf`, `variables.tf`, or `outputs.tf` are needed.
 

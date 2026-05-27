@@ -5,15 +5,15 @@ Honey-net Design
 
 Honey-net is a cloud-based honeypot network with pluggable honeypot services and a separate admin network for log aggregation and analysis.
 
-The project is built around three design pillars:
+The project is built around these design pillars:
 
 **1. Cheaper Than Starbucks™** — Running the full infrastructure should cost less than a coffee run. All hosts are minimal cloud VMs (currently Linode Nanodes at $5/mo each), and services are chosen for low resource overhead.
 
 **2. Swappable components** — No component should be load-bearing in a way that locks the rest of the system in. Grafana and Loki handle dashboards and log storage today; swapping them out should only require changes to the log shipper configuration, not the honeypots or the network design. Vector is the abstraction layer between honeypots and the log backend — honeypots write to files, Vector ships them, and only the sink config changes when the backend does.
 
-**4. Self-describing packages** — Adding a new honeypot or addon must not require changes to any root script. Every behavior the control plane needs (log paths, build requirements, provisioning steps) is declared inside the package itself. Root scripts discover these properties at runtime by reading from the package directory.
-
 **3. Isolation** — Honeypots are explicitly untrusted environments. Docker isolates each honeypot process from the host OS. Admin services (Grafana, Loki) are bound to a private Tailscale IP and never exposed to the public internet. Each honeypot runs on its own VM so a compromise stays contained. Host hardening (UFW, SSH key-only auth, fail2ban) is applied uniformly at deploy time.
+
+**4. Self-describing packages** — Adding a new honeypot or addon must not require changes to any root script. Every behavior the control plane needs (log paths, build requirements, provisioning steps) is declared inside the package itself. Root scripts discover these properties at runtime by reading from the package directory.
 
 Infrastructure-as-Code (currently Terraform) manages all cloud resources so the network can be torn down and rebuilt repeatably.
 

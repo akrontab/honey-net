@@ -21,18 +21,18 @@ deploy/                        # Everything that goes to the server
     fail2ban-jail.local        # fail2ban protecting port 65022
 
 _lib.py                        # Legacy shared utilities (used by connect.py/deploy.py below)
-connect.py                     # Legacy — use root connect.py --server log-stack instead
-deploy.py                      # Legacy — use root deploy.py / redeploy.py instead
-test_loki.py                   # Legacy — use root test_loki.py instead
+connect.py                     # Legacy — use scripts/connect.py --server log-stack instead
+deploy.py                      # Legacy — use scripts/redeploy.py --server log-stack instead
+test_loki.py                   # Legacy — use scripts/test_loki.py instead
 ```
 
 ## Deployment
 
 - Target: Linode Nanode (1 vCPU, 1GB RAM), Ubuntu 24.04 LTS
 - SSH key: `~/.ssh/log-stack-linode`
-- Provision: `python provision.py --server log-stack` (from repo root)
+- Provision: `python scripts/provision.py --server log-stack` (from repo root)
 - Provision: `sudo bash /root/log-stack/setup/setup.sh` on the server
-- Connect: `python connect.py --server log-stack` (from repo root)
+- Connect: `python scripts/connect.py --server log-stack` (from repo root)
 
 Real SSH runs on port **65022**. Port 22 is closed by UFW after setup.
 
@@ -80,8 +80,8 @@ Useful LogQL queries:
 Run from the repo root (Tailscale must be active):
 
 ```
-python test_loki.py                          # auto-detects log-stack Tailscale IP from state.json
-python test_loki.py --loki-host 100.x.x.x   # or pass it directly
+python scripts/test_loki.py                          # auto-detects log-stack Tailscale IP from state.json
+python scripts/test_loki.py --loki-host 100.x.x.x   # or pass it directly
 ```
 
 On success it prints HTTP 204 and the exact LogQL query to paste into Grafana Explore:
@@ -95,7 +95,7 @@ On failure it prints a checklist: local Tailscale status, reachability to the ho
 
 From the repo root:
 ```
-python redeploy.py --server log-stack   # Uses port 65022 via Tailscale, excludes .env
+python scripts/redeploy.py --server log-stack   # Uses port 65022 via Tailscale, excludes .env
 ```
 
 `redeploy.py` rsyncs files from `/root/log-stack/` to `/opt/log-stack/` and runs `docker compose up -d`. The `.env` is preserved.
