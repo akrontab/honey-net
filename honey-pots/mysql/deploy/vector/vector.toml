@@ -4,7 +4,7 @@ data_dir = "/vector-data"
 
 [sources.mysql_honeypot]
 type = "file"
-include = ["/logs/mysql/mysql-honeypot.json"]
+include = ["/logs/mysql/mysql.json"]
 read_from = "beginning"
 
 [sources.auth_log]
@@ -17,6 +17,42 @@ type = "file"
 include = ["/hostlogs/syslog"]
 read_from = "beginning"
 
+# ── Transforms ────────────────────────────────────────────────────────
+
+# Normalised cross-honeypot event stream. Raw mysql events continue to ship
+# untouched via [sinks.loki_mysql]; this transform produces a parallel stream
+# under {job="events", honeypot="mysql"}.
+[transforms.mysql_events]
+type = "remap"
+inputs = ["mysql_honeypot"]
+source = '''
+raw = parse_json!(string!(.message))
+
+event_type_map = {
+  "connect": "connect",
+  "login":   "login",
+  "query":   "query",
+  "session": "session_end",
+}
+
+event_type, _ = get(event_type_map, [string!(raw.event)])
+if event_type == null { abort }
+
+. = {
+  "timestamp":     raw.timestamp,
+  "honeypot":      "mysql",
+  "protocol":      "mysql",
+  "src_ip":        raw.src_ip,
+  "src_port":      raw.src_port,
+  "session_id":    raw.conn_id,
+  "event_type":    event_type,
+  "username":      raw.username,
+  "password":      null,
+  "payload":       raw.query,
+  "sample_sha256": null,
+}
+'''
+
 # ── Sinks ─────────────────────────────────────────────────────────────
 
 [sinks.loki_mysql]
@@ -28,6 +64,17 @@ labels.host = "${HOSTNAME}"
 
 [sinks.loki_mysql.encoding]
 codec = "text"
+
+[sinks.loki_mysql_events]
+type = "loki"
+inputs = ["mysql_events"]
+endpoint = "http://${LOKI_HOST}:3100"
+labels.job = "events"
+labels.honeypot = "mysql"
+labels.host = "${HOSTNAME}"
+
+[sinks.loki_mysql_events.encoding]
+codec = "json"
 
 [sinks.loki_auth]
 type = "loki"

@@ -30,10 +30,9 @@ deploy/
     query_handler.py       # QueryHandler class — SQL parsing + response bytes
     protocol.py            # MySQLHoneypot asyncio.Protocol — auth + dispatch
   vector/
-    vector.toml            # ships mysql-honeypot.json + host logs to Loki
-  logs.json                # log paths for the metadata addon
+    vector.toml            # ships mysql.json + host logs + normalised events
   setup/
-    fragment.sh            # mysql-specific provisioning steps (appended to server-config/setup.sh)
+    fragment.sh            # mysql-specific provisioning steps
 
 CLAUDE.md                  # this file
 test.py                    # MySQL connectivity test
@@ -87,10 +86,12 @@ Real SSH is on port 65022 (Tailscale only) — managed by `server-config/`.
 ## Log paths (on server)
 
 ```
-/opt/<server>/mysql/volumes/logs/mysql-honeypot.json   # attacker events
+/opt/<server>/mysql/volumes/logs/mysql.json   # attacker events
 ```
 
-Shipped to Loki by Vector with `{job="mysql"}`.
+Shipped to Loki by Vector with `{job="mysql"}` (raw) and `{job="events", honeypot="mysql"}`
+(normalised). MySQL does not capture binary samples, so it has no `/samples` mount and
+no per-honeypot inbox subdir.
 
 ## Captured event types
 
@@ -112,16 +113,32 @@ a single TCP connection. Use it to filter all events for one session in Loki.
 complete ordered list of SQL queries run during the connection, making it the primary
 event for session-level analysis.
 
+## Normalised event mapping
+
+| MySQL `event` | `event_type` |
+|---|---|
+| `connect` | `connect` |
+| `login` | `login` |
+| `query` | `query` |
+| `session` | `session_end` |
+| (anything else) | dropped from the events stream |
+
+`username` and `query` (mapped to `payload`) are forwarded. `password` is always `null`
+in the events stream because mysql_native_password uses a challenge-response handshake
+that doesn't reveal the password in plaintext to the honeypot. `sample_sha256` is `null`
+(no binary capture). `protocol` is always `"mysql"`.
+
 ## Useful LogQL queries
 
 ```
-{job="mysql"}                                    # all events
-{job="mysql"} | json | event = "login"           # credential attempts
-{job="mysql"} | json | event = "query"           # SQL queries
-{job="mysql"} | json | event = "connect"         # unique source IPs
-{job="mysql"} | json | event = "session"         # session summaries (queries[])
-{job="mysql"} | json | conn_id = "a1b2c3d4"      # all events for one session
-{job="auth"}                                     # host auth.log
+{job="mysql"}                                       # all raw events
+{job="mysql"} | json | event = "login"              # credential attempts
+{job="mysql"} | json | event = "query"              # SQL queries
+{job="mysql"} | json | event = "session"            # session summaries (queries[])
+{job="mysql"} | json | conn_id = "a1b2c3d4"         # all events for one session
+{job="events", honeypot="mysql"}                    # normalised mysql events
+{job="events"} | json | event_type = "login"        # logins across all honeypots
+{job="auth"}                                        # host auth.log
 ```
 
 ## Known gotchas
@@ -135,16 +152,15 @@ Unlike Cowrie (pre-built image), this stack requires building the Python image o
 `redeploy.py` builds it explicitly before restarting.
 
 ### Never run docker compose up --build on the combined stack
-The combined compose file includes two services with `build:` contexts: `malware-sender`
-and `mysql-honeypot`. Running `docker compose up --build` on the top-level
-compose starts both builds concurrently, which crashes dockerd with BuildKit error:
-`"session healthcheck failed fatally: only one connection allowed"`. This triggers
-the systemd restart loop and hits the start-limit.
+The combined compose file may include multiple services with `build:` contexts
+(mysql-honeypot, malware-sender, cowrie's capture-writer). Running `docker compose up
+--build` on the top-level compose starts builds concurrently, which crashes dockerd with
+BuildKit error: `"session healthcheck failed fatally: only one connection allowed"`.
 
 Build images explicitly in sequence instead:
 ```bash
-docker compose build malware-sender
 docker compose build mysql-honeypot
+docker compose build malware-sender
 docker compose up -d
 ```
 `setup.sh` (via the fragments) and `redeploy.py` already do this correctly.

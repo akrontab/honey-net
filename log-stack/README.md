@@ -11,7 +11,6 @@ Grafana and Loki are bound to the Tailscale IP only — never exposed to the pub
 | Cowrie — Attack Overview | SSH connections, login attempts, top IPs / usernames / passwords |
 | Cowrie — Commands | Commands run by attackers, file downloads |
 | Telnet Overview | Same as SSH overview, Telnet protocol |
-| Malware Analysis | YARA rule hits, download URLs, sample counts |
 | MySQL Overview | MySQL connections, SQL queries, databases targeted |
 | Credential Intelligence | SSH username+password combo analysis, credential spray rate, MySQL usernames |
 | Host Security | Real SSH port auth events, fail2ban bans, targeted usernames |
@@ -48,9 +47,10 @@ Useful LogQL queries in Explore:
 ```logql
 {job="cowrie"}   | json | eventid="cowrie.login.failed"   # SSH brute force
 {job="mysql"}    | json | event="query"                   # SQL queries
+{job="dionaea"}  | json | type="credentials"              # SMB/FTP creds
 {job="auth"}     |= "Failed"                              # real SSH auth failures
 {job="syslog"}   |= "fail2ban"                            # ban/unban events
-{job="malware"}                                           # YARA hits
+{job="events"}   | json | event_type="login"              # logins across every honeypot
 ```
 
 ## Re-deploying after changes

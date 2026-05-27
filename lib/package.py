@@ -1,4 +1,3 @@
-import json
 import sys
 
 try:
@@ -33,15 +32,15 @@ def _extract_vector_mounts(hp_name, volumes):
         if vol.startswith("./"):
             mounts.append(f"./{hp_name}/{vol[2:]}")
         else:
-            mounts.append(vol)  # named volume (e.g. malware-sender-logs:/logs/malware:ro)
+            mounts.append(vol)  # named volume or absolute path (e.g. ../inbox/foo:/x)
     return mounts
 
 
 def _merge_vector_tomls(toml_paths):
-    """Parse and merge multiple vector.toml files, deduplicating by source/sink key."""
+    """Parse and merge vector.toml files, deduplicating sources/transforms/sinks by key."""
     if tomllib is None:
         sys.exit("Python 3.11+ is required (tomllib). Upgrade Python and re-run setup.")
-    sources, sinks = {}, {}
+    sources, transforms, sinks = {}, {}, {}
     for path in toml_paths:
         if not path.exists():
             continue
@@ -49,13 +48,20 @@ def _merge_vector_tomls(toml_paths):
             data = tomllib.load(f)
         for k, v in data.get("sources", {}).items():
             sources.setdefault(k, v)
+        for k, v in data.get("transforms", {}).items():
+            transforms.setdefault(k, v)
         for k, v in data.get("sinks", {}).items():
             sinks.setdefault(k, v)
-    return sources, sinks
+    return sources, transforms, sinks
 
 
 def _toml_scalar(v):
     if isinstance(v, str):
+        if "\n" in v:
+            # Multi-line literal string — preserves backslashes and quotes verbatim.
+            # The opening '''-then-newline is stripped by TOML on parse; we re-emit
+            # it the same way so round-trips don't accumulate blank lines.
+            return f"'''\n{v.rstrip()}\n'''"
         return f'"{v}"'
     if isinstance(v, bool):
         return "true" if v else "false"
@@ -74,11 +80,16 @@ def _write_toml_block(lines, prefix, block):
             _write_toml_block(lines, f"{prefix}.{k}", sub)
 
 
-def _write_merged_vector_toml(path, sources, sinks):
+def _write_merged_vector_toml(path, sources, transforms, sinks):
     lines = ['data_dir = "/vector-data"', "", "# ── Sources " + "─" * 52]
     for name, fields in sources.items():
         lines += ["", f"[sources.{name}]"]
         _write_toml_block(lines, f"sources.{name}", fields)
+    if transforms:
+        lines += ["", "", "# ── Transforms " + "─" * 49]
+        for name, fields in transforms.items():
+            lines += ["", f"[transforms.{name}]"]
+            _write_toml_block(lines, f"transforms.{name}", fields)
     lines += ["", "", "# ── Sinks " + "─" * 54]
     for name, fields in sinks.items():
         lines += ["", f"[sinks.{name}]"]
@@ -114,33 +125,12 @@ def _stage_component(name, base, pkg_dir):
     return mounts
 
 
-def _inject_inbox_mounts(components, pkg_dir):
-    """Mount the shared inbox into any honeypot service that declares a downloads path."""
-    for hp_name, base in components:
-        if base != "honey-pots":
-            continue
-        logs_json_path = REPO_ROOT / base / hp_name / "deploy" / "logs.json"
-        if not logs_json_path.exists():
-            continue
-        for entry in json.loads(logs_json_path.read_text(encoding="utf-8")):
-            if not entry.get("downloads"):
-                continue
-            container_path = entry["container"]
-            compose_path = pkg_dir / hp_name / "docker-compose.yml"
-            compose = yaml.safe_load(compose_path.read_text(encoding="utf-8"))
-            compose["services"][hp_name].setdefault("volumes", []).append(
-                f"../inbox:{container_path}"
-            )
-            with compose_path.open("w", encoding="utf-8", newline="\n") as f:
-                f.write(yaml.safe_dump(compose, default_flow_style=False, sort_keys=False))
-
-
 def _write_vector_config(all_names, pkg_dir):
     """Merge per-component vector.toml files and write the combined config."""
     toml_paths = [pkg_dir / name / "vector" / "vector.toml" for name in all_names]
-    sources, sinks = _merge_vector_tomls(toml_paths)
+    sources, transforms, sinks = _merge_vector_tomls(toml_paths)
     (pkg_dir / "vector").mkdir(exist_ok=True)
-    _write_merged_vector_toml(pkg_dir / "vector" / "vector.toml", sources, sinks)
+    _write_merged_vector_toml(pkg_dir / "vector" / "vector.toml", sources, transforms, sinks)
 
 
 def _write_root_compose(all_names, vector_mounts, pkg_dir):
@@ -213,11 +203,14 @@ def assemble_honeypot_package(server, pkg_dir):
     """
     Populates pkg_dir with the honeypot deploy package:
       - <name>/  — each honeypot's and addon's deploy files, vector service stripped
-      - vector/vector.toml — merged from all components (sources/sinks deduplicated)
+      - vector/vector.toml — merged from all components (sources/transforms/sinks dedup)
       - docker-compose.yml — include: per component + single merged vector service
 
     pkg_dir must already exist.  Does NOT generate setup.sh or copy server-config
     files (provision.py handles those extras).
+
+    Per-honeypot sample inbox mounts (../inbox/<honeypot>:/samples) are declared
+    by each honeypot's own docker-compose.yml — the assembler does not inject them.
     """
     if yaml is None:
         sys.exit("pyyaml is required — run setup.ps1 or setup.sh to reinstall dependencies")
@@ -231,9 +224,6 @@ def assemble_honeypot_package(server, pkg_dir):
     vector_mounts = []
     for name, base in components:
         vector_mounts += _stage_component(name, base, pkg_dir)
-
-    if "metadata" in all_names:
-        _inject_inbox_mounts(components, pkg_dir)
 
     _write_vector_config(all_names, pkg_dir)
     _write_root_compose(all_names, vector_mounts, pkg_dir)

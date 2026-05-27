@@ -7,7 +7,7 @@ deployment package for honeypot servers.
 ## Files
 
 ```
-setup.sh              # Base provisioning script (steps 1-9)
+setup.sh              # Base provisioning script (steps 1-9 + shared inbox)
 sshd_hardening.conf   # Key-only auth, no passwords, minimal options
 99-hardening.conf     # sysctl kernel hardening
 fail2ban-jail.local   # fail2ban protecting port 65022 (4 retries, 1h ban)
@@ -40,12 +40,27 @@ affected by this folder.
 5. Kernel hardening — copies `99-hardening.conf` to `/etc/sysctl.d/`
 6. fail2ban — copies `fail2ban-jail.local` to `/etc/fail2ban/jail.d/`
 7. Unattended upgrades — dpkg-reconfigure
-8. Deploy files — rsync from `/root/<server>` to `/opt/<server>` (excludes `.env`)
+8. Deploy files — rsync from `/root/<server>` to `/opt/<server>` (excludes `.env`);
+   also creates `/opt/<server>/inbox/` with `chmod 777` as the shared sample inbox
+   (per-honeypot subdirs are created by each honeypot's fragment.sh)
 9. Tailscale — installs, joins tailnet, then tightens port 65022 from open-to-all to
    `tailscale0` interface only; writes `.env` for the stack
 
 After step 9, the honeypot's `fragment.sh` adds steps 10+:
-opens honeypot ports, creates volume directories, starts the Compose stack.
+opens honeypot ports, creates volume directories (including its `inbox/<name>/`
+subdir if it captures samples), starts the Compose stack.
+
+## Shared sample inbox
+
+`/opt/<server>/inbox/` exists on every honeypot server regardless of which addons are
+deployed. It's created here (not in any addon's fragment) for two reasons:
+
+- Honeypots that capture binaries (cowrie, dionaea) can drop samples into their
+  `inbox/<honeypot>/` subdir even on servers without the metadata/malware-sender
+  addons — they just sit there unprocessed until the addons are added.
+- One `chmod 777` lives in one place. Honeypots run as different UIDs (cowrie is 999,
+  others vary) and the addon containers run as root; a shared world-writable inbox
+  avoids re-chowning at every fragment.
 
 ## Tailscale-restricted SSH
 

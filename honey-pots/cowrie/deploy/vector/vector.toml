@@ -17,6 +17,48 @@ type = "file"
 include = ["/hostlogs/syslog"]
 read_from = "beginning"
 
+# ── Transforms ────────────────────────────────────────────────────────
+
+# Normalised cross-honeypot event stream. Raw cowrie events continue to ship
+# untouched via [sinks.loki_cowrie]; this transform produces a parallel stream
+# under {job="events", honeypot="cowrie"}.
+[transforms.cowrie_events]
+type = "remap"
+inputs = ["cowrie_json"]
+source = '''
+raw = parse_json!(string!(.message))
+
+event_type_map = {
+  "cowrie.session.connect":       "connect",
+  "cowrie.login.success":         "login",
+  "cowrie.login.failed":          "login",
+  "cowrie.command.input":         "command",
+  "cowrie.command.failed":        "command",
+  "cowrie.session.file_download": "download",
+  "cowrie.session.closed":        "session_end",
+}
+
+event_type, _ = get(event_type_map, [string!(raw.eventid)])
+if event_type == null { abort }
+
+payload = raw.input
+if event_type == "download" { payload = raw.url }
+
+. = {
+  "timestamp":     raw.timestamp,
+  "honeypot":      "cowrie",
+  "protocol":      raw.protocol,
+  "src_ip":        raw.src_ip,
+  "src_port":      raw.src_port,
+  "session_id":    raw.session,
+  "event_type":    event_type,
+  "username":      raw.username,
+  "password":      raw.password,
+  "payload":       payload,
+  "sample_sha256": raw.shasum,
+}
+'''
+
 # ── Sinks ─────────────────────────────────────────────────────────────
 
 [sinks.loki_cowrie]
@@ -28,6 +70,17 @@ labels.host = "${HOSTNAME}"
 
 [sinks.loki_cowrie.encoding]
 codec = "text"
+
+[sinks.loki_cowrie_events]
+type = "loki"
+inputs = ["cowrie_events"]
+endpoint = "http://${LOKI_HOST}:3100"
+labels.job = "events"
+labels.honeypot = "cowrie"
+labels.host = "${HOSTNAME}"
+
+[sinks.loki_cowrie_events.encoding]
+codec = "json"
 
 [sinks.loki_auth]
 type = "loki"

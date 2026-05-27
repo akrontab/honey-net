@@ -10,7 +10,7 @@ services:
       - ./volumes/logs:/logs
     environment:
       - HONEYPOT_HOSTNAME=${HONEYPOT_HOSTNAME:-mysql-honeypot}
-      - LOG_FILE=/logs/mysql-honeypot.json
+      - LOG_FILE=/logs/mysql.json
     security_opt:
       - no-new-privileges:true
     deploy:

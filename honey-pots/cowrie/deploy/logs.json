@@ -1,4 +1,0 @@
-[
-  {"host": "volumes/var/log/cowrie", "container": "/logs/cowrie", "log_file": "cowrie.json"},
-  {"container": "/downloads", "downloads": true}
-]

@@ -17,6 +17,46 @@ type = "file"
 include = ["/hostlogs/syslog"]
 read_from = "beginning"
 
+# ── Transforms ────────────────────────────────────────────────────────
+
+# Normalised cross-honeypot event stream. Raw dionaea events continue to ship
+# untouched via [sinks.loki_dionaea]; this transform produces a parallel stream
+# under {job="events", honeypot="dionaea"}. sample_sha256 is intentionally null —
+# dionaea reports md5/sha512 only; sha256 is computed by the metadata addon and
+# correlated via the sidecar in /inbox/<sha256>.meta.json.
+[transforms.dionaea_events]
+type = "remap"
+inputs = ["dionaea"]
+source = '''
+raw = parse_json!(string!(.message))
+
+event_type_map = {
+  "connection":  "connect",
+  "credentials": "login",
+  "download":    "download",
+}
+
+event_type, _ = get(event_type_map, [string!(raw.type)])
+if event_type == null { abort }
+
+payload = null
+if event_type == "download" { payload = raw.url }
+
+. = {
+  "timestamp":     raw.timestamp,
+  "honeypot":      "dionaea",
+  "protocol":      raw.protocol,
+  "src_ip":        raw.src_host,
+  "src_port":      raw.src_port,
+  "session_id":    null,
+  "event_type":    event_type,
+  "username":      raw.login,
+  "password":      raw.password,
+  "payload":       payload,
+  "sample_sha256": null,
+}
+'''
+
 # ── Sinks ─────────────────────────────────────────────────────────────
 
 [sinks.loki_dionaea]
@@ -28,6 +68,17 @@ labels.host = "${HOSTNAME}"
 
 [sinks.loki_dionaea.encoding]
 codec = "text"
+
+[sinks.loki_dionaea_events]
+type = "loki"
+inputs = ["dionaea_events"]
+endpoint = "http://${LOKI_HOST}:3100"
+labels.job = "events"
+labels.honeypot = "dionaea"
+labels.host = "${HOSTNAME}"
+
+[sinks.loki_dionaea_events.encoding]
+codec = "json"
 
 [sinks.loki_auth]
 type = "loki"

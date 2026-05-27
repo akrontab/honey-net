@@ -68,12 +68,21 @@ Password: whatever you set during setup
 
 Useful LogQL queries:
 ```
-{job="cowrie"}               # All Cowrie honeypot events
-{job="mysql"}                # All MySQL honeypot events (credentials, queries)
-{job="auth"}                 # SSH auth log from honeypot host
-{job="syslog"}               # syslog from honeypot host
-{job="malware"}              # Malware analyzer results (YARA hits, file types)
+{job="cowrie"}                               # raw Cowrie honeypot events
+{job="mysql"}                                # raw MySQL honeypot events
+{job="dionaea"}                              # raw Dionaea honeypot events
+{job="auth"}                                 # SSH auth log from honeypot host
+{job="syslog"}                               # syslog from honeypot host
+{job="events"}                               # normalised cross-honeypot stream
+{job="events", honeypot="cowrie"}            # normalised events for one honeypot
+{job="events"} | json | event_type = "login" # logins across every honeypot
 ```
+
+The `{job="events"}` stream is produced by per-honeypot VRL transforms in each
+honeypot's `vector.toml`. The raw `{job="<honeypot>"}` streams are kept untouched
+so per-honeypot dashboards and forensics still work. See `honey-pots/CLAUDE.md` for
+the unified event schema and `honey-pots/<name>/CLAUDE.md` for that honeypot's
+field mapping.
 
 ## Testing the stack
 

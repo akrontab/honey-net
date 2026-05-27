@@ -12,7 +12,7 @@ services:
       - ./dionaea/services-enabled:/opt/dionaea/etc/dionaea/services-enabled:ro
       - ./dionaea/ihandlers-enabled:/opt/dionaea/etc/dionaea/ihandlers-enabled:ro
       - ./volumes/logs:/opt/dionaea/var/log/dionaea
-      - ./volumes/binaries:/opt/dionaea/var/lib/dionaea/binaries
+      - ../inbox/dionaea:/opt/dionaea/var/lib/dionaea/binaries
     security_opt:
       - no-new-privileges:true
     deploy:

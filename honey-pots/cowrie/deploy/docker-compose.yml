@@ -11,6 +11,8 @@ services:
       - ./cowrie/honeyfs:/cowrie/cowrie-git/src/cowrie/data/honeyfs:ro
       - ./cowrie/txtcmds:/cowrie/cowrie-git/share/cowrie/txtcmds:ro
       - ./volumes/var:/cowrie/cowrie-git/var
+      - ./volumes/logs:/cowrie-logs
+      - ../inbox/cowrie:/samples
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -21,6 +23,24 @@ services:
     networks:
       - honeypot
 
+  capture-writer:
+    build:
+      context: ./capture-writer
+    container_name: cowrie-capture-writer
+    restart: unless-stopped
+    volumes:
+      - ./volumes/logs:/cowrie-logs:ro
+      - ../inbox/cowrie:/samples
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 32M
+          cpus: '0.05'
+    networks:
+      - honeypot
+
   vector:
     image: timberio/vector:0.42.0-alpine
     container_name: vector
@@ -28,7 +48,7 @@ services:
     user: root
     command: ["--config", "/etc/vector/vector.toml"]
     volumes:
-      - ./volumes/var/log/cowrie:/logs/cowrie:ro
+      - ./volumes/logs:/logs/cowrie:ro
       - /var/log:/hostlogs:ro
       - ./vector/vector.toml:/etc/vector/vector.toml:ro
       - vector-data:/vector-data

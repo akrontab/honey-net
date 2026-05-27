@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Pulls log files from a honeypot server to logs/<server-name>/ locally."""
+"""Pulls log files from a honeypot server to logs/<server-name>/ locally.
+
+By convention each honeypot writes its JSON log to:
+    /opt/<server>/<honeypot>/volumes/logs/<honeypot>.json
+so the only thing this script needs to know is which honeypots run on the server.
+"""
 
 import argparse
 import subprocess
@@ -10,15 +15,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib.config import REPO_ROOT, load_manifest, load_state
 from lib.server import select_server
 from lib.ssh import DEVNULL, ssh_key
-
-
-def load_honeypot_logs(hp: str) -> list[dict]:
-    """Return log entries from honey-pots/<hp>/deploy/logs.json, or [] if absent."""
-    path = REPO_ROOT / "honey-pots" / hp / "deploy" / "logs.json"
-    if not path.exists():
-        return []
-    import json
-    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def main():
@@ -56,35 +52,26 @@ def main():
 
     pulled, failed = 0, 0
     for hp in server["honeypots"]:
-        log_entries = load_honeypot_logs(hp)
-        pullable = [e for e in log_entries if e.get("log_file")]
+        remote_path = f"/opt/{name}/{hp}/volumes/logs/{hp}.json"
+        local_file  = local_dir / f"{hp}.json"
 
-        if not pullable:
-            print(f"  Warning: no log_file declared for '{hp}' in logs.json — skipping", file=sys.stderr)
-            continue
+        print(f"  {hp}/{hp}.json -> {local_file}")
+        r = subprocess.run([
+            "scp", "-P", "65022", "-i", key,
+            "-o", "StrictHostKeyChecking=no",
+            "-o", f"UserKnownHostsFile={DEVNULL}",
+            f"root@{ts_ip}:{remote_path}",
+            str(local_file),
+        ])
 
-        for entry in pullable:
-            log_file    = entry["log_file"]
-            remote_path = f"/opt/{name}/{hp}/{entry['host']}/{log_file}"
-            local_file  = local_dir / f"{hp}.json"
-
-            print(f"  {hp}/{log_file} -> {local_file}")
-            r = subprocess.run([
-                "scp", "-P", "65022", "-i", key,
-                "-o", "StrictHostKeyChecking=no",
-                "-o", f"UserKnownHostsFile={DEVNULL}",
-                f"root@{ts_ip}:{remote_path}",
-                str(local_file),
-            ])
-
-            if r.returncode == 0:
-                lines = sum(1 for _ in local_file.open(encoding="utf-8", errors="replace"))
-                print(f"    {lines} events")
-                pulled += 1
-            else:
-                print(f"    Warning: failed (scp exit {r.returncode}) — log file may not exist yet",
-                      file=sys.stderr)
-                failed += 1
+        if r.returncode == 0:
+            lines = sum(1 for _ in local_file.open(encoding="utf-8", errors="replace"))
+            print(f"    {lines} events")
+            pulled += 1
+        else:
+            print(f"    Warning: failed (scp exit {r.returncode}) — log file may not exist yet",
+                  file=sys.stderr)
+            failed += 1
 
     print()
     if pulled:

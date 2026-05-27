@@ -24,10 +24,9 @@ deploy/
     ihandlers-enabled/
       log_json.yaml        # JSON event log → dionaea.json
   vector/
-    vector.toml            # ships dionaea.json + host logs to Loki
-  logs.json                # log paths for the metadata addon
+    vector.toml            # ships dionaea.json + host logs + normalised events
   setup/
-    fragment.sh            # provisioning steps (appended to server-config/setup.sh)
+    fragment.sh            # provisioning steps
 
 CLAUDE.md                  # this file
 test.py                    # smoke test run from the control machine
@@ -66,12 +65,19 @@ Real SSH is on port 65022 (Tailscale only) — managed by `server-config/`.
 ## Log paths (on server)
 
 ```
-/opt/<server>/dionaea/volumes/logs/dionaea.json      # attacker events (JSON per line)
-/opt/<server>/dionaea/volumes/logs/dionaea.log       # application log (text)
-/opt/<server>/dionaea/volumes/binaries/              # downloaded files
+/opt/<server>/dionaea/volumes/logs/dionaea.json   # attacker events (JSONL)
+/opt/<server>/dionaea/volumes/logs/dionaea.log    # application log (text)
+/opt/<server>/inbox/dionaea/                      # captured binaries (md5-named by dionaea)
 ```
 
-Shipped to Loki by Vector with `{job="dionaea"}`.
+Shipped to Loki by Vector with `{job="dionaea"}` (raw) and
+`{job="events", honeypot="dionaea"}` (normalised).
+
+Dionaea's binary capture path inside the container
+(`/opt/dionaea/var/lib/dionaea/binaries/`) is bind-mounted to
+`/opt/<server>/inbox/dionaea/` on the host, so captured binaries flow into the shared
+inbox like cowrie's do. The metadata addon canonicalises md5-named binaries by computing
+sha256 and moving them to `/opt/<server>/inbox/<sha256>`.
 
 ## Event types in dionaea.json
 
@@ -83,15 +89,37 @@ Shipped to Loki by Vector with `{job="dionaea"}`.
 
 Events are written as one JSON object per line (JSONL format).
 
+## Normalised event mapping
+
+| dionaea `type` | `event_type` |
+|---|---|
+| `connection` | `connect` |
+| `credentials` | `login` |
+| `download` | `download` |
+
+`login`/`password` map to `username`/`password`. `url` is forwarded as `payload` for
+download events. `sample_sha256` is **null** in the events stream because dionaea
+reports md5/sha512 but not sha256 — analysts pivot via the canonical sidecar at
+`/opt/<server>/inbox/<sha256>.meta.json` (written by the metadata addon) to recover the
+sha256. `session_id` is null — dionaea events have no per-connection ID.
+
+Provenance enrichment is **not** done for dionaea: there is no `<file>.capture.json`
+sidecar writer because dionaea's upstream code can't easily be patched to emit one.
+The canonical sidecar will have `honeypot: "dionaea"` and `original_name` populated but
+`src_ip`/`url`/`session_id` will be `null`. Pivot through `{job="dionaea"}` raw events
+on the binary's md5hash to recover provenance.
+
 ## Useful LogQL queries
 
 ```
-{job="dionaea"}                                           # all events
-{job="dionaea"} | json | type = "credentials"             # credential attempts
-{job="dionaea"} | json | type = "credentials" | protocol = "ftp"  # FTP logins
-{job="dionaea"} | json | type = "connection" | protocol = "smb"   # SMB connections
-{job="dionaea"} | json | type = "download"                # captured file transfers
-{job="auth"}                                              # host auth.log
+{job="dionaea"}                                                  # all raw events
+{job="dionaea"} | json | type = "credentials"                    # credential attempts
+{job="dionaea"} | json | type = "credentials" | protocol = "ftp" # FTP logins
+{job="dionaea"} | json | type = "connection" | protocol = "smb"  # SMB connections
+{job="dionaea"} | json | type = "download"                       # captured file transfers
+{job="events", honeypot="dionaea"}                               # normalised dionaea events
+{job="events"} | json | event_type = "login"                     # logins across all honeypots
+{job="auth"}                                                     # host auth.log
 ```
 
 ## Known gotchas
@@ -110,7 +138,10 @@ the control channel is sufficient for a honeypot; passive transfers are not need
 Port 445 attracts constant automated probes. Log files grow quickly.
 Monitor disk: `df -h /opt/<server>/dionaea/volumes`
 
-### Downloaded binaries
-Dionaea saves attacker-transferred files to `volumes/binaries/` without the metadata/malware-sender
-pipeline (those addons are Cowrie-specific). To scan downloaded files, copy them off the
-server and run YARA manually, or submit to a sandbox.
+### No capture sidecar — dionaea provenance is best-effort
+Cowrie writes per-binary `.capture.json` sidecars at capture time via a small writer
+service we control. Dionaea has no equivalent because its binary-writing happens deep
+inside upstream C code. The metadata addon still canonicalises dionaea binaries
+(filetype, sha256, honeypot, original_name) but `src_ip`/`url`/`session_id` are `null`
+in the canonical sidecar. If this becomes painful in the catalog UI, the next step
+would be a small log-tailing process or a catalog-side join on the dionaea log stream.

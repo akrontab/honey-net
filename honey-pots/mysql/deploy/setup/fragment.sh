@@ -28,7 +28,7 @@ echo "  MySQL honeypot port : 3306"
 echo "  Real SSH port       : ${REAL_SSH_PORT} (Tailscale only)"
 echo "  Tailscale IP        : ${TAILSCALE_IP}"
 echo ""
-echo "  Logs                : ${DEPLOY_DIR}/mysql/volumes/logs/mysql-honeypot.json"
+echo "  Logs                : ${DEPLOY_DIR}/mysql/volumes/logs/mysql.json"
 echo ""
 if [[ -n "${LOKI_HOST}" ]]; then
   echo "  Shipping logs to Loki at: http://${LOKI_HOST}:3100"

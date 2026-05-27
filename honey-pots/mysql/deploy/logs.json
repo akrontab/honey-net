@@ -1,3 +1,0 @@
-[
-  {"host": "volumes/logs", "container": "/logs/mysql", "log_file": "mysql-honeypot.json"}
-]

@@ -1,3 +1,0 @@
-[
-  {"host": "volumes/logs", "container": "/logs/dionaea", "log_file": "dionaea.json"}
-]

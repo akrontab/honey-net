@@ -46,21 +46,39 @@ addons/<name>/
 
 | Addon | Purpose |
 |-------|---------|
-| `metadata` | Watches the inbox for new binary samples; writes `{sha256}.meta.json` sidecars |
-| `malware-sender` | Polls inbox for complete sidecars; submits samples to the malware catalog |
+| `metadata` | Walks `/inbox/<honeypot>/`, canonicalises (sha256-rename), enriches sidecars |
+| `malware-sender` | Polls inbox for canonicalised sidecars; submits samples + provenance to the catalog |
 
 ## Shared inbox
 
-The two addons (and Cowrie) share a bind-mounted directory at `/opt/<server>/inbox/`
-on the host, mounted as `/inbox` inside each container.
+The shared inbox is at `/opt/<server>/inbox/` on the host. It is **created by
+`server-config/setup.sh`** (not by any addon) with `chmod 777` so containers running as
+different UIDs can all read and write. The dir exists on every honeypot server, addons
+or not.
 
-| File | Written by | Read by |
-|------|-----------|---------|
-| `{sha256}` | cowrie (via assembled inbox mount) | malware-sender |
-| `{sha256}.meta.json` | metadata | malware-sender |
+### Layout inside the inbox
 
-The inbox is created by `metadata`'s `fragment.sh` with permissions `777` so both
-Cowrie (UID 999) and root containers can write to it.
+```
+/opt/<server>/inbox/
+  cowrie/                              # per-honeypot drop dir, created by cowrie's fragment
+    <whatever>                         # cowrie's binary (filename = sha256 by cowrie convention)
+    <whatever>.capture.json            # provenance sidecar written by cowrie's capture-writer
+  dionaea/                             # per-honeypot drop dir, created by dionaea's fragment
+    <md5>                              # dionaea's binary (md5-named by dionaea convention)
+  <sha256>                             # canonicalised binary (written by metadata)
+  <sha256>.meta.json                   # enriched sidecar (written by metadata)
+```
+
+| Path | Written by | Read / consumed by |
+|------|-----------|--------------------|
+| `<honeypot>/<name>` | the honeypot container (via `/samples` mount) | metadata (canonicalises) |
+| `<honeypot>/<name>.capture.json` | honeypot-specific capture writer | metadata (merges into sidecar) |
+| `<sha256>` | metadata (moved from `<honeypot>/`) | malware-sender |
+| `<sha256>.meta.json` | metadata | malware-sender |
+
+Per-honeypot subdirs are created by each honeypot's `fragment.sh` (e.g. cowrie's
+fragment does `mkdir -p $DEPLOY_DIR/inbox/cowrie && chmod 777 ...`). The metadata addon
+doesn't know which honeypots exist; it just walks whatever subdirs are present.
 
 ## Fragment order
 

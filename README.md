@@ -30,7 +30,7 @@ forward automatically.
 ```
 python honey.py
 ```
-Select **logs** to pull log files locally. Open Grafana at `http://<log-stack-tailscale-ip>:3000` — logs appear under `{job="cowrie"}`, `{job="mysql"}`.
+Select **logs** to pull log files locally. Open Grafana at `http://<log-stack-tailscale-ip>:3000` — raw streams appear under `{job="cowrie"}`, `{job="mysql"}`, `{job="dionaea"}`; the normalised cross-honeypot stream is `{job="events"}`.
 
 ---
 
@@ -58,6 +58,16 @@ Select **logs** to pull log files locally. Open Grafana at `http://<log-stack-ta
 - **Log-stack** runs Grafana + Loki. Receives logs from all honeypots. Never exposed to the public internet — Tailscale only.
 - **Malware-catalog** receives malware samples from honeypots running the `malware-sender` addon. Deduplicates by SHA-256. Web UI + REST API served via nginx, API backend internal-only.
 - Real SSH on every host is port **65022**, Tailscale-only. Port 22 goes to the honeypot.
+
+## Design
+
+**Cheaper Than Starbucks™** — The full infrastructure runs on Linode Nanodes at $5/mo each. Services are chosen for low resource overhead so the whole network costs less than a coffee run.
+
+**Swappable components** — No component is load-bearing in a way that locks the rest of the system in. Vector is the abstraction layer between honeypots and the log backend — honeypots write to files, Vector ships them, and only the sink config changes when the backend does.
+
+**Isolation** — Honeypots are explicitly untrusted environments. Docker isolates each honeypot process from the host OS. Admin services (Grafana, Loki, malware-catalog) are bound to a private Tailscale IP and never exposed to the public internet. Each honeypot runs on its own VM so a compromise stays contained. Host hardening (UFW, SSH key-only auth, fail2ban) is applied uniformly at deploy time.
+
+**Self-describing packages** — Adding a new honeypot or addon requires no changes to any root script. Every behavior the control plane needs (log paths, build requirements, provisioning steps) is declared inside the package itself. Root scripts discover these properties at runtime by reading from the package directory.
 
 ## Repo layout
 

@@ -65,7 +65,7 @@ honey-net/                    ← this repo (control plane)
   _lib.py                     ← backward-compat re-export shim for honey-pots/*/test.py
 ```
 
-`honey-net.json` is the single source of truth for all servers. All root scripts read from it. See `DESIGN.md` for the full architecture.
+`honey-net.json` is the single source of truth for all servers. All root scripts read from it.
 
 Each component has its own `CLAUDE.md`:
 
@@ -192,10 +192,11 @@ python scripts/test_loki.py
 ```
 
 In Grafana (`http://<tailscale-ip>:3000`):
-- `{job="cowrie"}` — Cowrie events
-- `{job="mysql"}` — MySQL credential and query events
+- `{job="cowrie"}` — raw Cowrie events
+- `{job="mysql"}` — raw MySQL credential and query events
+- `{job="dionaea"}` — raw Dionaea SMB/FTP events
 - `{job="auth"}` — host auth.log from the honeypot
-- `{job="malware"}` — YARA analyzer hits from Cowrie
+- `{job="events"}` — normalised cross-honeypot stream (see `honey-pots/CLAUDE.md` for schema)
 
 ## Re-deploying after changes
 
@@ -210,8 +211,12 @@ python scripts/redeploy.py --server log-stack
 ## Pulling logs
 
 ```
-python scripts/get_logs.py --server mysql-ssh   # saves cowrie.json + mysql-honeypot.json to logs/mysql-ssh/
+python scripts/get_logs.py --server mysql-ssh   # saves cowrie.json + mysql.json to logs/mysql-ssh/
 ```
+
+By convention each honeypot writes its JSON log to
+`/opt/<server>/<honeypot>/volumes/logs/<honeypot>.json`, so `get_logs.py` doesn't
+need any per-honeypot config to find it.
 
 ## Useful server commands
 

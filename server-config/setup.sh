@@ -150,6 +150,13 @@ echo "[8/9] Deploying files to ${DEPLOY_DIR}..."
 mkdir -p "${DEPLOY_DIR}"
 rsync -a --exclude='.env' "${SCRIPT_DIR}/" "${DEPLOY_DIR}/"
 
+# Shared sample inbox — created here so honeypots can drop binaries into
+# /opt/<server>/inbox/<honeypot>/ even on servers without the metadata addon.
+# 777 so cowrie (UID 999), root-running honeypots, and the addon containers
+# can all read and write through their bind mounts.
+mkdir -p "${DEPLOY_DIR}/inbox"
+chmod 777 "${DEPLOY_DIR}/inbox"
+
 # ── 9. Tailscale: install, join, restrict SSH port ───────────────────
 echo "[9/9] Installing Tailscale and joining tailnet..."
 curl -fsSL https://tailscale.com/install.sh | sh

@@ -11,7 +11,11 @@ ufw allow "445/tcp" comment 'dionaea SMB honeypot'
 # ── Create volume directories ─────────────────────────────────────────
 echo "[dionaea] Creating volume directories..."
 mkdir -p "${DEPLOY_DIR}/dionaea/volumes/logs"
-mkdir -p "${DEPLOY_DIR}/dionaea/volumes/binaries"
+
+# Per-honeypot inbox subdir — server-config created the parent inbox/ with 777.
+# Dionaea writes captured binaries here (md5-named); metadata addon canonicalises.
+mkdir -p "${DEPLOY_DIR}/inbox/dionaea"
+chmod 777 "${DEPLOY_DIR}/inbox/dionaea"
 
 # ── Build image and start stack ───────────────────────────────────────
 echo "[dionaea] Building dionaea from source (~15 min on a Nanode)..."
@@ -31,7 +35,7 @@ echo "  Real SSH port      : ${REAL_SSH_PORT} (Tailscale only)"
 echo "  Tailscale IP       : ${TAILSCALE_IP}"
 echo ""
 echo "  Logs               : ${DEPLOY_DIR}/dionaea/volumes/logs/dionaea.json"
-echo "  Downloads          : ${DEPLOY_DIR}/dionaea/volumes/binaries/"
+echo "  Sample inbox       : ${DEPLOY_DIR}/inbox/dionaea/"
 echo ""
 if [[ -n "${LOKI_HOST}" ]]; then
   echo "  Shipping logs to Loki at: http://${LOKI_HOST}:3100"
