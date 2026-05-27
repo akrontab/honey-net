@@ -46,6 +46,8 @@ COMMANDS = [
     ("connect",    "connect",        "Open an SSH session to a server",               _connect_args),
     ("sync",       "sync_ips",       "Sync IPs from Terraform + Tailscale to state.json", None),
     ("logs",       "get_logs",       "Pull logs from a honeypot server",              None),
+    ("backup",     "backup",         "Back up logs, inbox, and malware catalog",       None),
+    ("restore",    "restore",        "Restore a backup to the live network",           None),
     ("gen-key",    "gen_ts_key",     "Generate a Tailscale auth key",                 _gen_key_args),
     ("check-keys",  "check_ssh_keys", "Check SSH keys in honey-net.json; generate missing",  None),
     ("check-logs",  "check_logs",     "Check log stream freshness in Loki",                  None),

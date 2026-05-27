@@ -1,6 +1,7 @@
 .tailscale-apikey
 state.json
 logs/
+backups/
 .claude/
 .venv/
 __pycache__/
