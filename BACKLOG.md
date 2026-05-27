@@ -4,7 +4,10 @@ Ideas and features to implement. Tell Claude "implement the next backlog item" t
 
 ## Pending
 
-- [ ] Local-only backups (add cloud storage support — S3 or Backblaze B2)
+- [ ] Multiple cloud provider support with terraform
+- [ ] Create dashboard for normalized logs
+  - [ ] Refactor the campaign dashboard
+  - [ ] General log for network detections
 
 ## Done
 
