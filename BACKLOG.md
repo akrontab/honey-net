@@ -8,6 +8,7 @@ Ideas and features to implement. Tell Claude "implement the next backlog item" t
 - [ ] Create dashboard for normalized logs
   - [ ] Refactor the campaign dashboard
   - [ ] General log for network detections
+- [ ] Tailscale clean up scripts for old machines that are no longer on the network. Sync with terraform state
 
 ## Done
 
