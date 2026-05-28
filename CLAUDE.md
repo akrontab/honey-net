@@ -1,238 +1,62 @@
-# Honey-Net
+# Honey-Net — Technical Reference
 
 A proof-of-concept honeypot network for threat intelligence and attacker behavior research.
 
-## Architecture
+## System overview
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Tailscale VPN                           │
-│                                                                 │
-│  ┌──────────────────────┐                                       │
-│  │   honeypot server    │──┐  ┌──────────────────────────────┐  │
-│  │  service(s) + Vector │  │  │          log-stack           │  │
-│  │  Nanode $5/mo        │  ├─▶│                              │  │
-│  └──────────────────────┘  │  │  Loki (log store)            │  │
-│                            │  │  Grafana (dashboards)        │  │
-│  ┌──────────────────────┐  │  │                              │  │
-│  │   honeypot server    │──┘  │  Nanode $5/mo                │  │
-│  │  service(s) + Vector │     └──────────────────────────────┘  │
-│  │  Nanode $5/mo        │                                       │
-│  └──────────────────────┘                                       │
-└─────────────────────────────────────────────────────────────────┘
-```
+Three components run on Ubuntu 24.04 LTS in Docker Compose, connected via a private Tailscale VPN. All hosts are defined in `honey-net.json` (single source of truth). Tailscale is the only path to real SSH (port 65022).
 
-- **honeypot servers** — One or more VMs, each running one or more honeypot service packages (e.g. Cowrie, MySQL) plus a Vector sidecar that ships logs to Loki over Tailscale. Real SSH on port 65022 (Tailscale only). Defined by `honey-net.json`.
-- **log-stack** — Grafana + Loki. Receives logs from all honeypots over Tailscale. Never exposed to the public internet.
+- **Honeypot servers** — VMs running honeypot service packages (Cowrie, MySQL, Dionaea) + a Vector sidecar. Ship logs to log-stack and captured malware to malware-catalog via the `malware-sender` addon.
+- **Log-stack** — Grafana + Loki. Receives logs from honeypots and malware-catalog. Never exposed to the public internet.
+- **Malware-catalog** — Collects, deduplicates (SHA-256), and enriches samples. Never exposed to the public internet.
 
-All hosts run Ubuntu 24.04 LTS in Docker Compose. The Tailscale VPN connects them and is the only path to real SSH on any host.
+## Security model
 
-## Repo layout
+Honeypots are **untrusted by default** — they are actively attacked and expected to be compromised. The rest of the infrastructure is hardened to survive that compromise:
 
-```
-honey-net/                    ← this repo (control plane)
-  honey-pots/
-    cowrie/                   ← cowrie honeypot package
-    mysql/                    ← mysql honeypot package
-    dionaea/                  ← dionaea SMB/FTP honeypot package
-  addons/
-    metadata/                 ← metadata extractor addon (log → inbox sidecars)
-    malware-sender/           ← malware-sender addon (inbox → malware catalog)
-  malware-catalog/            ← malware catalog service (FastAPI + workers)
-  server-config/              ← shared host hardening
-  log-stack/                  ← Grafana + Loki stack
-  terraform/                  ← infrastructure-as-code
-  honey-net.json              ← authored server manifest
-  state.json                  ← gitignored, written by sync_ips.py
-  requirements.txt            ← Python dependencies (requests)
-  setup.ps1                   ← one-time local setup (Windows)
-  setup.sh                    ← one-time local setup (macOS/Linux)
-  honey.py                    ← interactive launcher for all control scripts
-  scripts/
-    provision.py              ← end-to-end provisioning (terraform + server setup)
-    redeploy.py               ← update a live server (port 65022, Tailscale)
-    connect.py                ← SSH into a server
-    sync_ips.py               ← write IPs from terraform + Tailscale to state.json
-    get_logs.py               ← pull logs from a honeypot
-    gen_ts_key.py             ← generate a Tailscale auth key
-    check_ssh_keys.py         ← check / generate SSH keys for all servers
-    check_logs.py             ← check log stream freshness in Loki
-    check_disk.py             ← check disk usage on all servers (25 GB Nanode limit)
-    test_loki.py              ← push a test log to Loki to verify the stack
-    test_honeypot.py          ← run smoke tests for a honeypot type
-    analyze_mysql.py          ← per-IP MySQL connection rollup from pulled logs
-  lib/                        ← shared library (config, ssh, color, package, server, files)
-  _lib.py                     ← backward-compat re-export shim for honey-pots/*/test.py
-```
+- **Container + VM isolation** — each honeypot service runs in a Docker container on its own Linode Nanode. A jailbreak stays within one VM.
+- **Network segmentation** — all inter-host traffic goes over Tailscale; admin services bind to private Tailscale IPs only. Public ports (22, 3306, etc.) bind to the honeypot, never the host.
+- **Auth** — Ed25519 SSH keys only, passwords disabled, real SSH on port 65022 (Tailscale-only). UFW + fail2ban on every host.
+- **Immutable audit trail** — logs ship off-box continuously; catalog records are insert-only. A compromised honeypot cannot rewrite history.
 
-`honey-net.json` is the single source of truth for all servers. All root scripts read from it.
+See `server-config/CLAUDE.md` for hardening details.
 
-Each component has its own `CLAUDE.md`:
+## Key contracts
 
-| Path | Contents |
-|------|----------|
-| `honey-pots/CLAUDE.md` | Honeypot package structure, fragment conventions, full checklist |
-| `honey-pots/cowrie/CLAUDE.md` | Cowrie protocol, log paths, gotchas |
-| `honey-pots/mysql/CLAUDE.md` | MySQL emulator, event types, gotchas |
-| `honey-pots/dionaea/CLAUDE.md` | Dionaea SMB/FTP, event types, gotchas |
-| `addons/CLAUDE.md` | Addon package structure, shared inbox, fragment order |
-| `addons/metadata/CLAUDE.md` | Sidecar schema, log formats, offset tracking |
-| `addons/malware-sender/CLAUDE.md` | Submission flow, CLEAN_UP behaviour, gotchas |
-| `malware-catalog/CLAUDE.md` | Module responsibilities, DB-as-queue design, adding enrichment sources |
-| `server-config/CLAUDE.md` | Base setup.sh steps, Tailscale SSH restriction |
-| `log-stack/CLAUDE.md` | Grafana/Loki config, LogQL queries |
-| `terraform/CLAUDE.md` | Terraform usage, for_each design, state keys |
+**`honey-net.json` is the single source of truth.** All root scripts read from it. Add a server entry with `name`, `type`, `ssh_key`, `ports`, `honeypots`; no Terraform or root-script changes needed.
 
-## Prerequisites
+**Self-describing packages.** New honeypots/addons require no root-level changes — behavior is declared inside the package directory and discovered at runtime.
 
-Before deploying any server:
+**Hardcoded filesystem paths** (control plane and addons depend on these):
+- Honeypot logs → `/opt/<server>/<honeypot>/volumes/logs/<honeypot>.json` (newline-delimited JSON)
+- Malware samples → `/opt/<server>/<honeypot>/volumes/inbox/` (arbitrary filenames; `malware-sender` cleans up)
 
-1. **Python environment** — run once after cloning, before any other script:
-   ```powershell
-   # Windows
-   .\setup.ps1
-   .venv\Scripts\activate
-   ```
-   ```bash
-   # macOS / Linux
-   chmod +x setup.sh
-   ./setup.sh
-   source .venv/bin/activate
-   ```
-   This creates `.venv` and installs `requests`. All `python *.py` commands below
-   assume the venv is active.
+**Two log streams in Loki:**
+- `{job="<honeypot>"}` — raw service events (full detail, for forensics)
+- `{job="events", honeypot="<name>"}` — normalized cross-honeypot stream with unified event types (`connect`, `login`, `command`, `download`, `session_end`). See `honey-pots/CLAUDE.md` for the schema and per-honeypot VRL mappings.
 
-   Alternatively, use the interactive launcher for all commands:
-   ```
-   python honey.py
-   ```
+**Malware-catalog contract:**
+- Submission API dedupes by SHA-256; records are immutable once created.
+- `static-analyzer` (YARA, IOCs, ssdeep) always runs. `intel-fetcher` (VirusTotal/MalwareBazaar) and `sandbox-submitter` (tria.ge) are opt-in via API keys in `.env`.
+- See `malware-catalog/CLAUDE.md` for the worker queue pattern and DB design.
 
-2. **SSH key pair** for each server — path set in `honey-net.json` (`ssh_key` field):
-   ```powershell
-   ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\log-stack-linode"
-   ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\mysql-ssh-honeypot"
-   ```
+## Control plane
 
-3. **Tailscale account** — [tailscale.com](https://tailscale.com). Free tier covers this entire project.
-   Generate an auth key for each new host before running `setup.sh`:
-   ```
-   python scripts/gen_ts_key.py              # backend servers — non-ephemeral (survives reboots)
-   python scripts/gen_ts_key.py --ephemeral  # honeypot servers — auto-removed from tailnet on destroy
-   ```
-   First run prompts for a Tailscale **API key** (tailscale.com → Settings → Keys → Generate API key)
-   and saves it to `~/.tailscale-apikey`. Subsequent runs print a fresh auth key.
+`honey.py` is the single entry point — a CLI launcher that discovers `scripts/*.py`, handles credentials upfront, threads state (`state.json`, IPs, `LOKI_HOST`) forward between dependent deploys, and exposes everything as either a menu or flag-based invocation. Scripts are independently runnable (`python scripts/<name>.py`) so the launcher never becomes a bottleneck. See README.md for the full script list and usage.
 
-4. **Linode API token** — cloud.linode.com → Profile → API Tokens → Create.
-   Requires Read/Write Linodes and Read Only Events scopes.
+## Component map
 
-## Provisioning with Terraform
+| Path | Purpose | Detailed docs |
+|------|---------|---------------|
+| `honey-pots/` | Honeypot service packages (Cowrie, MySQL, Dionaea) | `honey-pots/CLAUDE.md` + per-honeypot subdirs |
+| `addons/` | Sidecars (metadata extraction, malware submission) | `addons/CLAUDE.md` + per-addon subdirs |
+| `malware-catalog/` | Sample catalog API, enrichment workers, web UI | `malware-catalog/CLAUDE.md` |
+| `server-config/` | Shared host hardening (UFW, SSH, fail2ban) | `server-config/CLAUDE.md` |
+| `log-stack/` | Grafana + Loki stack | `log-stack/CLAUDE.md` |
+| `terraform/` | Infrastructure-as-code (Linode VMs) | `terraform/CLAUDE.md` |
+| `lib/` | Shared Python library (config, ssh, packages, servers) | — |
+| `scripts/` | Control plane scripts (provision, deploy, sync) | — |
 
-Terraform reads `honey-net.json` directly — adding a server entry is the only change needed.
-Root passwords are auto-generated and stored in Terraform state.
+## See README.md for
 
-```powershell
-cd terraform
-copy terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars — add linode_token (and optionally region)
-terraform init
-terraform plan
-terraform apply
-cd ..
-python scripts/sync_ips.py    # reads terraform output + Tailscale API, writes state.json
-```
-
-To destroy all infrastructure:
-```powershell
-cd terraform && terraform destroy
-```
-
-### Adding a new server
-
-1. Add an entry to `honey-net.json` with `name`, `type`, `ssh_key`, `ports`, and `honeypots`.
-2. Generate an SSH key pair for the new server.
-3. If it's a new honeypot type, create `honey-pots/<name>/` with the standard layout.
-4. Run `python scripts/provision.py --server <name>` — creates the VM via Terraform and runs full setup.
-
-No changes to `terraform/main.tf` are needed.
-
-## Deployment order
-
-Deploy log-stack first — its Tailscale IP is required by Vector on every honeypot.
-
-### 1. Deploy log-stack
-
-```
-python scripts/provision.py --server log-stack
-```
-
-Prompts for Tailscale API key (saved to `~/.tailscale-apikey`), Grafana admin password,
-then runs end-to-end: waits for SSH, generates Tailscale auth key, SCPs files, runs
-`setup.sh`, polls Tailscale until the node registers, and writes the Tailscale IP to
-`state.json`.
-
-If the run is interrupted and restarted, servers that already have a `tailscale_ip` in
-`state.json` are skipped (prompts to confirm). Use `--force` to reprovision them without
-the prompt.
-
-### 2. Deploy honeypots
-
-```
-python scripts/provision.py --server mysql-ssh
-```
-
-Same flow. `provision.py` reads `LOKI_HOST` from `state.json` (set in step 1) and passes
-it to `setup.sh` automatically. After setup completes, port 22 is closed and SSH moves
-to port 65022 on the Tailscale interface only.
-
-### 3. Verify logs are flowing
-
-```
-# Push a test log line to Loki (requires Tailscale running locally)
-python scripts/test_loki.py
-```
-
-In Grafana (`http://<tailscale-ip>:3000`):
-- `{job="cowrie"}` — raw Cowrie events
-- `{job="mysql"}` — raw MySQL credential and query events
-- `{job="dionaea"}` — raw Dionaea SMB/FTP events
-- `{job="auth"}` — host auth.log from the honeypot
-- `{job="events"}` — normalised cross-honeypot stream (see `honey-pots/CLAUDE.md` for schema)
-
-## Re-deploying after changes
-
-```
-python scripts/redeploy.py --server mysql-ssh   # Tailscale required
-python scripts/redeploy.py --server log-stack
-```
-
-`redeploy.py` copies updated files to the server via Tailscale (port 65022) and runs
-`docker compose up -d`. Does not touch system configuration. The `.env` is preserved.
-
-## Pulling logs
-
-```
-python scripts/get_logs.py --server mysql-ssh   # saves cowrie.json + mysql.json to logs/mysql-ssh/
-```
-
-By convention each honeypot writes its JSON log to
-`/opt/<server>/<honeypot>/volumes/logs/<honeypot>.json`, so `get_logs.py` doesn't
-need any per-honeypot config to find it.
-
-## Useful server commands
-
-```bash
-# On mysql-ssh (runs both cowrie and mysql honeypots)
-docker compose -f /opt/mysql-ssh/docker-compose.yml ps
-docker compose -f /opt/mysql-ssh/docker-compose.yml logs -f cowrie
-docker compose -f /opt/mysql-ssh/docker-compose.yml logs -f mysql-honeypot
-docker compose -f /opt/mysql-ssh/docker-compose.yml logs -f vector
-
-# On log-stack
-docker compose -f /opt/log-stack/docker-compose.yml ps
-docker compose -f /opt/log-stack/docker-compose.yml logs -f loki
-docker compose -f /opt/log-stack/docker-compose.yml logs -f grafana
-
-# Tailscale (any host)
-tailscale status
-tailscale ip -4
-```
+Quick start, prerequisites (Linode/Tailscale/SSH keys), provisioning and deployment procedures, re-deployment, log pulling, and adding a new honeypot server.

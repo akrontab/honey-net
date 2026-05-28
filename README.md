@@ -129,17 +129,112 @@ honey-net/
 ./setup.sh
 source .venv/bin/activate
 ```
-**2. Linode API token** — cloud.linode.com → Profile → API Tokens → Create (Read/Write Linodes scope).
 
-**3. Tailscale API key** — tailscale.com → Settings → Keys → Generate API key. Saved to `~/.tailscale-apikey` on first use; subsequent runs read it from there automatically.
+**2. SSH key pairs** — one for each server. Set the path in `honey-net.json` (`ssh_key` field):
+```powershell
+ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\log-stack-linode"
+ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\mysql-ssh-honeypot"
+```
+
+**3. Linode API token** — cloud.linode.com → Profile → API Tokens → Create (Read/Write Linodes scope).
+
+**4. Tailscale account** — [tailscale.com](https://tailscale.com). Free tier covers this entire project.
+- Tailscale API key (tailscale.com → Settings → Keys → Generate API key)
+- Saved to `~/.tailscale-apikey` on first run; subsequent runs read it automatically
+- Generate auth keys with `python scripts/gen_ts_key.py` (non-ephemeral for backends, `--ephemeral` for honeypots)
+
+## Provisioning
+
+Terraform reads `honey-net.json` directly. Root passwords are auto-generated and stored in Terraform state.
+
+```powershell
+cd terraform
+copy terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars — add linode_token (and optionally region)
+terraform init
+terraform plan
+terraform apply
+cd ..
+python scripts/sync_ips.py    # reads terraform output + Tailscale API, writes state.json
+```
+
+To destroy all infrastructure:
+```powershell
+cd terraform && terraform destroy
+```
+
+## Deployment order
+
+Deploy log-stack first — its Tailscale IP is required by Vector on every honeypot.
+
+**1. Deploy log-stack**
+```
+python scripts/provision.py --server log-stack
+```
+Prompts for Tailscale API key, Grafana admin password, then runs end-to-end: waits for SSH, generates Tailscale auth key, SCPs files, runs `setup.sh`, polls Tailscale until registered, and writes the Tailscale IP to `state.json`.
+
+If interrupted and restarted, servers already in `state.json` are skipped (with a prompt). Use `--force` to reprovision without prompting.
+
+**2. Deploy honeypots**
+```
+python scripts/provision.py --server mysql-ssh
+```
+Same flow. `provision.py` reads `LOKI_HOST` from `state.json` (set in step 1) and passes it to `setup.sh` automatically. After setup, port 22 closes and SSH moves to port 65022 (Tailscale only).
+
+**3. Verify logs are flowing**
+```
+python scripts/test_loki.py    # Push a test log line to Loki
+```
+Open Grafana at `http://<log-stack-tailscale-ip>:3000`:
+- `{job="cowrie"}` — raw Cowrie events
+- `{job="mysql"}` — raw MySQL events
+- `{job="dionaea"}` — raw Dionaea events
+- `{job="auth"}` — host auth.log
+- `{job="events"}` — normalised cross-honeypot stream
+
+## Re-deploying after changes
+
+```
+python scripts/redeploy.py --server mysql-ssh   # Tailscale required
+python scripts/redeploy.py --server log-stack
+```
+
+Copies updated files to the server via Tailscale (port 65022) and runs `docker compose up -d`. Does not touch system configuration; `.env` is preserved.
+
+## Pulling logs
+
+```
+python scripts/get_logs.py --server mysql-ssh   # saves logs/ to logs/mysql-ssh/
+```
+
+By convention each honeypot writes JSON logs to `/opt/<server>/<honeypot>/volumes/logs/<honeypot>.json`. `get_logs.py` reads from these paths automatically.
+
+## Useful server commands
+
+```bash
+# On a honeypot server (e.g., mysql-ssh)
+docker compose -f /opt/mysql-ssh/docker-compose.yml ps
+docker compose -f /opt/mysql-ssh/docker-compose.yml logs -f cowrie
+docker compose -f /opt/mysql-ssh/docker-compose.yml logs -f mysql-honeypot
+docker compose -f /opt/mysql-ssh/docker-compose.yml logs -f vector
+
+# On log-stack
+docker compose -f /opt/log-stack/docker-compose.yml ps
+docker compose -f /opt/log-stack/docker-compose.yml logs -f loki
+docker compose -f /opt/log-stack/docker-compose.yml logs -f grafana
+
+# Tailscale (any host)
+tailscale status
+tailscale ip -4
+```
 
 ### Optional — malware-catalog enrichment
 
 The catalog runs three enrichment workers alongside the API. The first (`static-analyzer`: YARA, IOC extraction, ssdeep, PE/ELF parsing) needs no setup. The other two only run if you provide a key:
 
-**4. VirusTotal API key** *(optional, enables AV verdict enrichment)* — [virustotal.com/gui/my-apikey](https://www.virustotal.com/gui/my-apikey). Free tier (4 req/min) is enough. Lookup-only; the catalog never uploads samples to VT.
+**VirusTotal API key** *(optional, enables AV verdict enrichment)* — [virustotal.com/gui/my-apikey](https://www.virustotal.com/gui/my-apikey). Free tier (4 req/min) is enough. Lookup-only; the catalog never uploads samples to VT.
 
-**5. Triage API key** *(optional, enables dynamic sandbox analysis)* — [tria.ge/account/api](https://tria.ge/account/api). Free public tier available. Submissions are **public**, so by default only ELF/PE samples (already public via MalwareBazaar) are uploaded.
+**Triage API key** *(optional, enables dynamic sandbox analysis)* — [tria.ge/account/api](https://tria.ge/account/api). Free public tier available. Submissions are **public**, so by default only ELF/PE samples (already public via MalwareBazaar) are uploaded.
 
 Both keys go in `malware-catalog/deploy/.env` on the catalog server (see `.env.example`). Without them, `intel-fetcher` runs MalwareBazaar lookups only and `sandbox-submitter` stays off. Apply with `python redeploy.py --server malware-catalog`.
 
@@ -193,8 +288,9 @@ python scripts/sync_ips.py
 
 ## Adding a honeypot server
 
-1. Add an entry to `honey-net.json` with `name`, `ssh_key`, `honeypots`, `ports`.
-2. Generate an SSH key pair for it.
-3. Run `python honey.py provision --server <name>` — creates the VM and runs full setup.
+1. Add an entry to `honey-net.json` with `name`, `type`, `ssh_key`, `ports`, and `honeypots`.
+2. Generate an SSH key pair for the new server.
+3. If it's a new honeypot type, create `honey-pots/<name>/` with the standard package layout.
+4. Run `python honey.py provision --server <name>` — creates the VM via Terraform and runs full setup.
 
-No changes to `terraform/main.tf` or any root script are needed.
+No changes to `terraform/main.tf` or any root script are needed. See `honey-pots/CLAUDE.md` for honeypot package structure.
