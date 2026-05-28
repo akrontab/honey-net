@@ -1,15 +1,15 @@
 {
-  "title": "Campaign Tracking",
-  "uid": "campaign-tracking",
-  "description": "Download infrastructure analysis, target architecture profiling, and payload delivery fingerprinting. Download panels use the normalized {job=\"events\"} stream and cover all honeypots; architecture stats are Cowrie-specific.",
+  "title": "Honeypot Event Stream",
+  "uid": "normalized-events",
+  "description": "Normalized cross-honeypot view — unified connect, login, command, download, and session_end events from all honeypots via the {job=\"events\"} stream",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 1,
   "time": {"from": "now-24h", "to": "now"},
   "timepicker": {},
   "refresh": "1m",
   "timezone": "browser",
   "graphTooltip": 1,
-  "tags": ["honeypot", "malware", "campaign"],
+  "tags": ["honeypot", "events", "normalized"],
   "links": [],
   "annotations": {"list": []},
   "templating": {"list": []},
@@ -17,71 +17,9 @@
     {
       "id": 1,
       "type": "stat",
-      "title": "Unique Download Hosts",
-      "description": "Distinct C2 / staging infrastructure IPs and domains across all honeypots",
+      "title": "Total Events",
+      "description": "All normalized events across all honeypots in the selected time range",
       "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
-      "datasource": {"type": "loki", "uid": "loki"},
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "fixed", "fixedColor": "red"},
-          "unit": "short",
-          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}]}
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
-        "textMode": "auto"
-      },
-      "targets": [{
-        "datasource": {"type": "loki", "uid": "loki"},
-        "expr": "count(sum by (dl_host) (count_over_time({job=\"events\"} | json | event_type=\"download\" | regexp \"https?://(?P<dl_host>[^/:]+)\" [$__range])))",
-        "instant": true,
-        "queryType": "instant",
-        "refId": "A"
-      }]
-    },
-    {
-      "id": 2,
-      "type": "stat",
-      "title": "Unique File SHA256s",
-      "description": "Distinct malware samples captured across all honeypots",
-      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
-      "datasource": {"type": "loki", "uid": "loki"},
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "fixed", "fixedColor": "orange"},
-          "unit": "short",
-          "thresholds": {"mode": "absolute", "steps": [{"color": "orange", "value": null}]}
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
-        "textMode": "auto"
-      },
-      "targets": [{
-        "datasource": {"type": "loki", "uid": "loki"},
-        "expr": "count(sum by (sample_sha256) (count_over_time({job=\"events\"} | json | event_type=\"download\" | sample_sha256 != \"\" [$__range])))",
-        "instant": true,
-        "queryType": "instant",
-        "refId": "A"
-      }]
-    },
-    {
-      "id": 3,
-      "type": "stat",
-      "title": "Target Architectures Seen",
-      "description": "Distinct CPU architectures the attacker's dropper targets (Cowrie only — simulated shell uname)",
-      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
       "datasource": {"type": "loki", "uid": "loki"},
       "fieldConfig": {
         "defaults": {
@@ -101,7 +39,69 @@
       },
       "targets": [{
         "datasource": {"type": "loki", "uid": "loki"},
-        "expr": "count(sum by (arch) (count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.session.params\" [$__range])))",
+        "expr": "sum(count_over_time({job=\"events\"} [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Unique Attackers",
+      "description": "Distinct source IPs seen across all honeypots",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "red"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "count(sum by (src_ip) (count_over_time({job=\"events\"} | json [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Login Attempts",
+      "description": "Authentication attempts across all protocols (SSH, Telnet, MySQL)",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "orange"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "orange", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"events\"} | json | event_type=\"login\" [$__range]))",
         "instant": true,
         "queryType": "instant",
         "refId": "A"
@@ -110,8 +110,8 @@
     {
       "id": 4,
       "type": "stat",
-      "title": "Failed Downloads",
-      "description": "Download attempts that returned no file — offline C2 or CDN blocks (Cowrie only)",
+      "title": "Downloads Captured",
+      "description": "Payload delivery events across all honeypots",
       "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
       "datasource": {"type": "loki", "uid": "loki"},
       "fieldConfig": {
@@ -132,7 +132,7 @@
       },
       "targets": [{
         "datasource": {"type": "loki", "uid": "loki"},
-        "expr": "sum(count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.session.file_download.failed\" [$__range]))",
+        "expr": "sum(count_over_time({job=\"events\"} | json | event_type=\"download\" [$__range]))",
         "instant": true,
         "queryType": "instant",
         "refId": "A"
@@ -141,90 +141,74 @@
     {
       "id": 5,
       "type": "timeseries",
-      "title": "Download Activity over Time",
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 4},
+      "title": "Events by Type over Time",
+      "description": "Stacked activity volume per event type — shifts between connect/login/command/download indicate progression through an attack",
+      "gridPos": {"h": 8, "w": 16, "x": 0, "y": 4},
       "datasource": {"type": "loki", "uid": "loki"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "palette-classic"},
           "custom": {
             "drawStyle": "line",
-            "fillOpacity": 10,
+            "fillOpacity": 20,
             "lineInterpolation": "linear",
-            "lineWidth": 2,
+            "lineWidth": 1,
             "showPoints": "never",
             "spanNulls": false,
-            "stacking": {"group": "A", "mode": "none"}
+            "stacking": {"group": "A", "mode": "normal"}
           },
           "unit": "short"
         },
-        "overrides": [
-          {
-            "matcher": {"id": "byName", "options": "Successful"},
-            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]
-          },
-          {
-            "matcher": {"id": "byName", "options": "Failed (Cowrie)"},
-            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "orange"}}]
-          }
-        ]
+        "overrides": []
       },
       "options": {
         "legend": {"calcs": ["max"], "displayMode": "list", "placement": "bottom", "showLegend": true},
         "tooltip": {"mode": "multi", "sort": "desc"}
       },
-      "targets": [
-        {
-          "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "sum(count_over_time({job=\"events\"} | json | event_type=\"download\" [$__interval]))",
-          "legendFormat": "Successful",
-          "queryType": "range",
-          "refId": "A"
-        },
-        {
-          "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "sum(count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.session.file_download.failed\" [$__interval]))",
-          "legendFormat": "Failed (Cowrie)",
-          "queryType": "range",
-          "refId": "B"
-        }
-      ]
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum by (event_type) (count_over_time({job=\"events\"} | json [$__interval]))",
+        "legendFormat": "{{event_type}}",
+        "queryType": "range",
+        "refId": "A"
+      }]
     },
     {
       "id": 6,
-      "type": "table",
-      "title": "Top Download URL Hosts (C2 Infrastructure)",
-      "description": "Staging servers delivering payloads across all honeypots — recurring hosts indicate active campaign infrastructure",
-      "gridPos": {"h": 12, "w": 8, "x": 0, "y": 12},
+      "type": "bargauge",
+      "title": "Events by Honeypot",
+      "description": "Total event share per honeypot — identifies which surface is under heaviest attack",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 4},
       "datasource": {"type": "loki", "uid": "loki"},
       "fieldConfig": {
-        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+        },
         "overrides": []
       },
       "options": {
-        "cellHeight": "sm",
-        "footer": {"show": false},
-        "showHeader": true,
-        "sortBy": [{"desc": true, "displayName": "Downloads"}]
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "showUnfilled": true
       },
       "targets": [{
         "datasource": {"type": "loki", "uid": "loki"},
-        "expr": "topk(20, sum by (dl_host) (count_over_time({job=\"events\"} | json | event_type=\"download\" | regexp \"https?://(?P<dl_host>[^/:]+)\" [$__range])))",
+        "expr": "sum by (honeypot) (count_over_time({job=\"events\"} | json [$__range]))",
         "instant": true,
         "queryType": "instant",
-        "legendFormat": "{{dl_host}}",
+        "legendFormat": "{{honeypot}}",
         "refId": "A"
-      }],
-      "transformations": [
-        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"dl_host": "Host", "Value #A": "Downloads"}}}
-      ]
+      }]
     },
     {
       "id": 7,
       "type": "table",
-      "title": "Top Download Filenames",
-      "description": "Payload binary names across all honeypots — arch suffixes (mips, arm7, x86) identify multi-arch IoT droppers",
-      "gridPos": {"h": 12, "w": 8, "x": 8, "y": 12},
+      "title": "Top Attacker IPs",
+      "description": "Most active source IPs across all protocols and honeypots",
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 12},
       "datasource": {"type": "loki", "uid": "loki"},
       "fieldConfig": {
         "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
@@ -234,55 +218,55 @@
         "cellHeight": "sm",
         "footer": {"show": false},
         "showHeader": true,
-        "sortBy": [{"desc": true, "displayName": "Downloads"}]
+        "sortBy": [{"desc": true, "displayName": "Count"}]
       },
       "targets": [{
         "datasource": {"type": "loki", "uid": "loki"},
-        "expr": "topk(20, sum by (dl_filename) (count_over_time({job=\"events\"} | json | event_type=\"download\" | regexp \"https?://[^/]+/(?P<dl_filename>[^/? ]+)\" [$__range])))",
+        "expr": "topk(25, sum by (src_ip) (count_over_time({job=\"events\"} | json [$__range])))",
         "instant": true,
         "queryType": "instant",
-        "legendFormat": "{{dl_filename}}",
+        "legendFormat": "{{src_ip}}",
         "refId": "A"
       }],
       "transformations": [
-        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"dl_filename": "Filename", "Value #A": "Downloads"}}}
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"src_ip": "Source IP", "Value #A": "Count"}}}
       ]
     },
     {
       "id": 8,
       "type": "table",
-      "title": "Target Architecture Distribution",
-      "description": "CPU arch reported by Cowrie's simulated shell — what device type the attacker thinks this is (Cowrie only)",
-      "gridPos": {"h": 12, "w": 8, "x": 16, "y": 12},
+      "title": "Top Usernames Attempted",
+      "description": "Most common login usernames across all honeypots — identifies credential spray wordlists",
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 12},
       "datasource": {"type": "loki", "uid": "loki"},
       "fieldConfig": {
-        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": false}},
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
         "overrides": []
       },
       "options": {
         "cellHeight": "sm",
         "footer": {"show": false},
         "showHeader": true,
-        "sortBy": [{"desc": true, "displayName": "Sessions"}]
+        "sortBy": [{"desc": true, "displayName": "Count"}]
       },
       "targets": [{
         "datasource": {"type": "loki", "uid": "loki"},
-        "expr": "topk(15, sum by (arch) (count_over_time({job=\"cowrie\"} | json | eventid=\"cowrie.session.params\" [$__range])))",
+        "expr": "topk(25, sum by (username) (count_over_time({job=\"events\"} | json | event_type=\"login\" | username != \"\" [$__range])))",
         "instant": true,
         "queryType": "instant",
-        "legendFormat": "{{arch}}",
+        "legendFormat": "{{username}}",
         "refId": "A"
       }],
       "transformations": [
-        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"arch": "Architecture", "Value #A": "Sessions"}}}
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"username": "Username", "Value #A": "Count"}}}
       ]
     },
     {
       "id": 9,
       "type": "logs",
       "title": "Recent Download Events",
-      "description": "Download events from all honeypots — payload field contains the URL, sample_sha256 the file hash",
-      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 24},
+      "description": "Payload delivery events across all honeypots — payload field contains the URL, sample_sha256 the file hash",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 22},
       "datasource": {"type": "loki", "uid": "loki"},
       "options": {
         "dedupStrategy": "none",
@@ -297,6 +281,30 @@
       "targets": [{
         "datasource": {"type": "loki", "uid": "loki"},
         "expr": "{job=\"events\"} | json | event_type=\"download\"",
+        "queryType": "range",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 10,
+      "type": "logs",
+      "title": "Live Event Stream",
+      "description": "All normalized events in real time across all honeypots",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 30},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "{job=\"events\"} | json",
         "queryType": "range",
         "refId": "A"
       }]
