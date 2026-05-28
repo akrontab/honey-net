@@ -23,10 +23,10 @@ find "${DEPLOY_DIR}/cowrie/cowrie" -type d -exec chmod 755 {} \;
 find "${DEPLOY_DIR}/cowrie/cowrie" -type f -exec chmod 644 {} \;
 chown -R 999:999 "${DEPLOY_DIR}/cowrie/volumes"
 
-# ── Pre-fetch images and build capture-writer ─────────────────────────
-echo "[cowrie] Pre-fetching images..."
+# ── Build images (sequence matters — concurrent BuildKit crashes dockerd) ─────
+echo "[cowrie] Building cowrie image (with key-harvester extension)..."
 cd "${DEPLOY_DIR}"
-docker compose pull cowrie
+docker compose build cowrie
 
 echo "[cowrie] Building capture-writer image..."
 docker compose build capture-writer

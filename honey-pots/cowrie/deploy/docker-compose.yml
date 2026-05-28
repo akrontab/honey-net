@@ -1,6 +1,7 @@
 services:
   cowrie:
-    image: cowrie/cowrie:latest
+    build:
+      context: ./cowrie-ext
     container_name: cowrie
     restart: unless-stopped
     ports:
