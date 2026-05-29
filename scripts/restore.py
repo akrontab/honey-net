@@ -102,9 +102,14 @@ def restore_catalog(server, ts_ip, backup_dir):
     print("ok")
 
     print("  Restoring database ...", end=" ", flush=True)
+    # sqlite3 CLI is not on the host — run restore inside the catalog container
+    # which has Python's built-in sqlite3 module.  -T skips PTY allocation.
+    py_restore = "import sqlite3; c=sqlite3.connect('/data/catalog.db'); c.executescript(open('/restore.sql').read()); c.close()"
     run_ssh(key, PORT, ts_ip,
             f"rm -f {_CATALOG_DB} && "
-            f"sqlite3 {_CATALOG_DB} < /tmp/_honey_net_catalog_restore.sql && "
+            f"docker compose -f {_COMPOSE_FILE} run --rm --no-deps -T "
+            f"-v /tmp/_honey_net_catalog_restore.sql:/restore.sql:ro "
+            f'malware-catalog python -c "{py_restore}" && '
             f"rm -f /tmp/_honey_net_catalog_restore.sql",
             check=True)
     print("ok")
