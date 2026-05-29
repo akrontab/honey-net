@@ -18,7 +18,7 @@ Backend servers (`log-stack`, `malware-catalog`) have their own self-contained `
 8. **Deploy files** — rsync from `/root/<server>` to `/opt/<server>` (excludes `.env`); creates `/opt/<server>/inbox/` with `chmod 777` as the shared sample inbox
 9. **Tailscale** — installs, joins, then tightens 65022 from open-to-all to `tailscale0` interface only; writes `.env` for the stack
 
-After step 9, each honeypot's `fragment.sh` runs (steps 10+): opens honeypot ports, creates volume directories, starts the Compose stack.
+After step 9, each honeypot's `fragment.sh` runs (steps 10+): opens honeypot ports, creates volume directories, and builds images. Whether a fragment starts the Compose stack depends on how it is written — cowrie and metadata fragments do not run `docker compose up -d`; mysql, dionaea, and malware-sender do.
 
 ## Shared sample inbox
 

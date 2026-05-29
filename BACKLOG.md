@@ -1,6 +1,6 @@
 # Backlog
 
-Ideas and features to implement. Tell Claude "implement the next backlog item" to work through these one at a time.
+Ideas and features to implement. Tell Claude "implement the next backlog item" to work through these one at a time. When starting on a new item plan first and prompt for any infomration needed for implementation. Then once all information is collected, start implementation.
 
 ## Pending
 

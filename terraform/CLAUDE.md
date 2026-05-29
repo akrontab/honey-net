@@ -2,8 +2,6 @@
 
 Creates and manages all honey-net cloud hosts on Linode. Each host is a Nanode (1 vCPU, 1GB RAM, $5/mo) running Ubuntu 24.04 LTS. Servers are driven by `honey-net.json` — adding a server entry there is the only change needed before `terraform apply`.
 
-See README.md for first-time setup and routine usage commands. This file documents the contracts and gotchas.
-
 ## Required Linode API token scopes
 
 | Scope | Permission | Why |
@@ -26,17 +24,7 @@ terraform output -json root_passwords
 
 ## State file
 
-Stored locally in `terraform.tfstate` (gitignored). For a personal PoC, local state is fine. For multi-machine workflows, configure a remote backend in `main.tf`:
-
-```hcl
-terraform {
-  backend "s3" {
-    bucket = "my-tfstate-bucket"
-    key    = "honey-net/terraform.tfstate"
-    region = "us-east-1"
-  }
-}
-```
+Stored locally in `terraform.tfstate` (gitignored). Fine for a personal PoC; configure a remote backend (`s3`, `gcs`, etc.) in `main.tf` for multi-machine workflows.
 
 ## Secrets
 

@@ -6,8 +6,6 @@ To create a new package, copy an existing one (`cowrie/` is simplest, `mysql/` f
 
 ## Filesystem conventions
 
-The package owns where it drops logs and samples. No declarative manifest — these paths are hardcoded in the control plane.
-
 | Concern | Convention |
 |---|---|
 | JSON log on host | `./volumes/logs/<honeypot>.json` (filename = package name) |
@@ -52,8 +50,6 @@ All fields except `timestamp`, `honeypot`, `src_ip`, and `event_type` may be `nu
 
 The Loki job label (`labels.job`) is what LogQL queries filter on — use a short lowercase name matching the package name. Every honeypot also ships `auth.log` and `syslog` from `/hostlogs` to `{job="auth"}` / `{job="syslog"}`.
 
-The assembler merges every honeypot's sources/transforms/sinks into one top-level `vector.toml`, deduplicating by name.
-
 ## setup/fragment.sh
 
 `provision.py` concatenates `server-config/setup.sh` with each honeypot's `fragment.sh` in the order listed under `"honeypots"` in `honey-net.json`. The result is the `setup.sh` that lands on the server.
@@ -74,7 +70,7 @@ Fragment responsibilities:
 - **Create the per-honeypot inbox subdir** with `chmod 777` if it captures samples.
 - **Fix ownership** for non-root container UIDs (Cowrie is 999).
 - **Build locally-built images explicitly in sequence.** Never `docker compose up --build` — concurrent BuildKit crashes dockerd (see `mysql/CLAUDE.md`).
-- **Only the last fragment runs `docker compose up -d`**. Earlier fragments stop after building.
+- **Run `docker compose up -d` only if this fragment is designed to always be last.** Cowrie's fragment does not — it is always followed by addons on real servers. MySQL and dionaea fragments always run `up -d` (designed as standalone-terminal honeypots). Malware-sender always runs `up -d` as the terminal addon. On multi-component servers, a non-terminal fragment that runs `up -d` will start the stack before later images are built, then the final fragment starts it again.
 
 ## honey-net.json entry
 

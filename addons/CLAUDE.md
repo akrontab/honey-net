@@ -48,7 +48,7 @@ Per-honeypot subdirs are created by each honeypot's `fragment.sh`. The metadata 
 
 ## Fragment order
 
-Fragments append to `setup.sh` as: **honeypots first, then addons**. The **last addon's fragment** runs `docker compose up -d`. For `mysql-ssh` the order is: cowrie → mysql → metadata → malware-sender (starts stack).
+Fragments append to `setup.sh` as: **honeypots first, then addons**. The **last addon's fragment** runs `docker compose up -d`. For `mysql-ssh` the order is: cowrie → mysql → metadata → malware-sender (starts stack). Note: mysql's fragment also runs `docker compose up -d` — before the addon images are built — so the stack starts twice during provisioning. The malware-sender pass is the authoritative one that brings all components up.
 
 ## Adding a new addon
 

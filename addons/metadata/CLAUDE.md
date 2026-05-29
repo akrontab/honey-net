@@ -1,12 +1,8 @@
 # metadata addon
 
-Canonicalises malware samples dropped by honeypots into per-honeypot subdirs of the shared inbox. For each binary it computes sha256, moves the file to `/inbox/<sha256>`, and writes a `/inbox/<sha256>.meta.json` sidecar merging filesystem-derived fields with any honeypot-supplied provenance.
+Canonicalises malware samples into deterministically-named entries. For each binary in a per-honeypot inbox subdir: computes sha256, moves to `/inbox/<sha256>`, writes `/inbox/<sha256>.meta.json` merging derived fields with any co-located `<name>.capture.json` provenance sidecar. No log parsing — honeypot identity is the parent subdir name only.
 
-The malware-sender addon reads the canonical sidecars and submits to the catalog.
-
-## Responsibility
-
-Single responsibility: turn whatever a honeypot dropped into a deterministically-named canonical sample with a complete sidecar. No log parsing, no knowledge of any specific honeypot's log format — honeypot identity comes from the parent subdir, and per-event provenance comes from optional `<name>.capture.json` sidecars the honeypot drops alongside the binary.
+`malware-sender` reads the canonical sidecars and submits to the catalog.
 
 ## How it works
 

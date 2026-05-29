@@ -1,6 +1,6 @@
 # log-stack
 
-Grafana + Loki host for the honey-net. Receives logs from honeypots and malware-catalog over Tailscale. Never exposed to the public internet. See README.md for deployment commands and the root CLAUDE.md for system context.
+Grafana + Loki host for the honey-net. Receives logs from honeypots and malware-catalog over Tailscale. Never exposed to the public internet.
 
 ## Tailscale-only binding (not firewall)
 

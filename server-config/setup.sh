@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Honey-net base host provisioning script.
-# Assembled by deploy.ps1: this file is the base, followed by the honeypot's fragment.sh.
+# Assembled by provision.py: this file is the base, followed by the honeypot's fragment.sh.
 # Run as root on a fresh Ubuntu 24.04 LTS Linode Nanode.
 #
 # What this script covers (steps 1-9):
@@ -17,7 +17,7 @@
 #       the Tailscale interface only (tailscale0) — port invisible to public internet
 #       Write .env for the stack
 #
-# The honeypot fragment.sh appended by deploy.ps1 adds steps 10+:
+# The honeypot fragment.sh appended by provision.py adds steps 10+:
 #   opens honeypot ports, creates volume directories, starts the Compose stack.
 #
 # PREREQUISITE: Verify key-based SSH login works BEFORE running this script.

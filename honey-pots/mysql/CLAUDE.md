@@ -31,12 +31,6 @@ A fake crypto-exchange DB to keep attackers engaged and reveal tooling/intent. A
 
 All tables visible to `SHOW TABLES`, `DESC`, `SELECT * / COUNT(*) / LIMIT`, and `information_schema` introspection (used by DBeaver/HeidiSQL).
 
-## Ports
-
-| Port | Protocol | Goes to |
-|------|----------|---------|
-| 3306 | MySQL | Python honeypot |
-
 ## Logs and events
 
 `/opt/<server>/mysql/volumes/logs/mysql.json` — JSONL, one event per line.
