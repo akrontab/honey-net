@@ -4,7 +4,6 @@
 
 # ── Build image ───────────────────────────────────────────────────────
 echo "[metadata] Building metadata image..."
-cd "${DEPLOY_DIR}"
-docker compose build metadata
+su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && docker compose build metadata"
 
 echo "[metadata] Metadata extractor configured."

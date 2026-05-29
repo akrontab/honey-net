@@ -91,6 +91,11 @@ cat > /etc/docker/daemon.json <<'DOCKEREOF'
 {"dns": ["8.8.8.8", "1.1.1.1"]}
 DOCKEREOF
 
+# Create non-root service user for running Docker/Compose.
+# No SSH access (AllowUsers root in sshd config) — only reachable via su.
+id honey &>/dev/null || useradd -m -s /bin/bash honey
+usermod -aG docker honey
+
 # ── 3. UFW: open port 65022 before touching sshd ────────────────────
 echo "[3/9] Opening real SSH port ${REAL_SSH_PORT} in UFW..."
 ufw --force reset
@@ -157,6 +162,10 @@ rsync -a --exclude='.env' "${SCRIPT_DIR}/" "${DEPLOY_DIR}/"
 mkdir -p "${DEPLOY_DIR}/inbox"
 chmod 777 "${DEPLOY_DIR}/inbox"
 
+# Transfer ownership to honey so Docker/Compose runs as non-root.
+# Fragment.sh re-chowns cowrie/volumes to 999:999 after this.
+chown -R honey:honey "${DEPLOY_DIR}"
+
 # ── 9. Tailscale: install, join, restrict SSH port ───────────────────
 echo "[9/9] Installing Tailscale and joining tailnet..."
 curl -fsSL https://tailscale.com/install.sh | sh
@@ -176,6 +185,7 @@ LOKI_HOST=${LOKI_HOST}
 HONEYPOT_HOSTNAME=${HONEYPOT_HOSTNAME}
 CATALOG_URL=${CATALOG_URL:-}
 EOF
+chown honey:honey "${DEPLOY_DIR}/.env"
 chmod 600 "${DEPLOY_DIR}/.env"
 
 if [[ -z "${LOKI_HOST}" ]]; then

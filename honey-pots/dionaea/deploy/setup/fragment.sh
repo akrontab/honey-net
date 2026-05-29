@@ -19,11 +19,10 @@ chmod 777 "${DEPLOY_DIR}/inbox/dionaea"
 
 # ── Build image and start stack ───────────────────────────────────────
 echo "[dionaea] Building dionaea from source (~15 min on a Nanode)..."
-cd "${DEPLOY_DIR}"
-docker compose build dionaea
+su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && docker compose build dionaea"
 
 echo "[dionaea] Starting honeypot stack..."
-docker compose up -d
+su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && docker compose up -d"
 
 echo ""
 echo "================================================================"

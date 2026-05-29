@@ -25,10 +25,9 @@ chown -R 999:999 "${DEPLOY_DIR}/cowrie/volumes"
 
 # ── Build images (sequence matters — concurrent BuildKit crashes dockerd) ─────
 echo "[cowrie] Building cowrie image (with key-harvester extension)..."
-cd "${DEPLOY_DIR}"
-docker compose build cowrie
+su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && docker compose build cowrie"
 
 echo "[cowrie] Building capture-writer image..."
-docker compose build capture-writer
+su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && docker compose build capture-writer"
 
 echo "[cowrie] Cowrie configured — stack will start after all addons are set up."

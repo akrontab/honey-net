@@ -71,11 +71,17 @@ def main():
 
     # Build remote restart command
     compose_cmd = f"docker compose -f /opt/{name}/docker-compose.yml"
+    # Chown excludes volumes/ dirs (owned by container UIDs, not honey).
     rsync_cmd   = (
         f"rsync -a --delete --exclude='.env' --filter='protect */volumes/' "
         f"/root/{name}/ /opt/{name}/ "
+        f"&& find /opt/{name}/ -not -path '*/volumes/*' -exec chown honey:honey {{}} + "
         f"&& find /opt/{name}/ -not -path '*/volumes/*' -exec chmod a+rX {{}} +"
     )
+
+    def honey(cmd: str) -> str:
+        """Wrap a shell command to run as the honey service user."""
+        return f"su -s /bin/bash honey -c '{cmd}'"
 
     if server["type"] == "honeypot":
         components = (
@@ -87,18 +93,12 @@ def main():
             for name, base in components
             for svc in component_build_services(name, base)
         ]
-        build_cmds = " && ".join(f"{compose_cmd} build {svc}" for svc in build_svcs)
-        if build_cmds:
-            restart_cmd = f"{rsync_cmd} && {build_cmds} && {compose_cmd} up -d"
-        else:
-            restart_cmd = f"{rsync_cmd} && {compose_cmd} up -d"
+        docker_steps = [f"{compose_cmd} build {svc}" for svc in build_svcs] + [f"{compose_cmd} up -d"]
+        restart_cmd = f"{rsync_cmd} && {honey(' && '.join(docker_steps))}"
     else:
         build_svcs = backend_build_services(name)
-        build_cmds = " && ".join(f"{compose_cmd} build {svc}" for svc in build_svcs)
-        if build_cmds:
-            restart_cmd = f"{rsync_cmd} && {build_cmds} && {compose_cmd} up -d"
-        else:
-            restart_cmd = f"{rsync_cmd} && {compose_cmd} up -d"
+        docker_steps = [f"{compose_cmd} build {svc}" for svc in build_svcs] + [f"{compose_cmd} up -d"]
+        restart_cmd = f"{rsync_cmd} && {honey(' && '.join(docker_steps))}"
 
     print(f"Restarting stack on {name}...")
     r = subprocess.run(["ssh"] + ssh_opts + [remote, restart_cmd])

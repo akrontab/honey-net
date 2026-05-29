@@ -32,10 +32,10 @@ fi
 if [[ "${1:-}" == "--redeploy" ]]; then
   echo "Syncing files to ${DEPLOY_DIR}..."
   cp -r "${SCRIPT_DIR}/../." "${DEPLOY_DIR}/"
+  chown -R honey:honey "${DEPLOY_DIR}"
   chmod -R a+rX "${DEPLOY_DIR}"
-  cd "${DEPLOY_DIR}"
-  docker compose up -d
-  docker compose restart grafana
+  su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && docker compose up -d"
+  su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && docker compose restart grafana"
   echo "Done."
   exit 0
 fi
@@ -94,6 +94,11 @@ systemctl enable --now docker
 cat > /etc/docker/daemon.json <<EOF
 {"dns": ["8.8.8.8", "1.1.1.1"]}
 EOF
+
+# Create non-root service user for running Docker/Compose.
+# No SSH access (AllowUsers root in sshd config) — only reachable via su.
+id honey &>/dev/null || useradd -m -s /bin/bash honey
+usermod -aG docker honey
 
 # ── 3. UFW — open real SSH port before touching sshd ────────────────
 echo "[3/9] Configuring UFW..."
@@ -155,17 +160,18 @@ echo "[9/9] Deploying to ${DEPLOY_DIR} and starting stack..."
 mkdir -p "${DEPLOY_DIR}"
 cp -r "${SCRIPT_DIR}/../." "${DEPLOY_DIR}/"
 # Grafana runs as uid 472 — ensure it can read provisioning files
+chown -R honey:honey "${DEPLOY_DIR}"
 chmod -R a+rX "${DEPLOY_DIR}"
 
 cat > "${DEPLOY_DIR}/.env" <<EOF
 TAILSCALE_IP=${TAILSCALE_IP}
 GRAFANA_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
 EOF
+chown honey:honey "${DEPLOY_DIR}/.env"
 chmod 600 "${DEPLOY_DIR}/.env"
 
-cd "${DEPLOY_DIR}"
-docker compose pull
-docker compose up -d
+su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && docker compose pull"
+su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && docker compose up -d"
 
 echo ""
 echo "================================================================"
