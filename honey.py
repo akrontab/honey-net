@@ -64,6 +64,7 @@ COMMANDS = [
     ("test-loki",   "test_loki",      "Push a test log to Loki to verify the stack",         None),
     ("test",        "test_honeypot",  "Run smoke tests for a honeypot from this machine",     None),
     ("ts-cleanup",  "ts_cleanup",     "Remove stale Tailscale nodes not in Terraform state",  None),
+    ("teardown",    "teardown",       "Destroy VMs (terraform), clean Tailscale, clear state", None),
 ]
 
 _CMD_MAP = {name: (module, desc, fn) for name, module, desc, fn in COMMANDS}
