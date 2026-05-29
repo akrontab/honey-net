@@ -2,11 +2,20 @@
 """Launcher for honey-net control scripts."""
 
 import importlib
+import os
 import sys
 from pathlib import Path
 
+# Re-exec with the venv Python if we're not already running from it.
+# This lets `python honey.py` work without manually activating the venv.
+_repo = Path(__file__).resolve().parent
+_venv_python = _repo / ".venv" / "Scripts" / "python.exe"
+if _venv_python.exists() and Path(sys.executable).resolve() != _venv_python.resolve():
+    import subprocess
+    sys.exit(subprocess.run([str(_venv_python)] + sys.argv).returncode)
+
 # Make scripts/ importable as top-level modules (e.g. importlib.import_module("provision"))
-_scripts = Path(__file__).resolve().parent / "scripts"
+_scripts = _repo / "scripts"
 sys.path.insert(0, str(_scripts))
 
 from lib.color import _enable_ansi, _c
@@ -54,6 +63,7 @@ COMMANDS = [
     ("check-disk",  "check_disk",     "Check disk usage on all servers (25 GB Nanode limit)", None),
     ("test-loki",   "test_loki",      "Push a test log to Loki to verify the stack",         None),
     ("test",        "test_honeypot",  "Run smoke tests for a honeypot from this machine",     None),
+    ("ts-cleanup",  "ts_cleanup",     "Remove stale Tailscale nodes not in Terraform state",  None),
 ]
 
 _CMD_MAP = {name: (module, desc, fn) for name, module, desc, fn in COMMANDS}
