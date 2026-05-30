@@ -1,0 +1,97 @@
+data_dir = "/vector-data"
+
+# ── Sources ───────────────────────────────────────────────────────────
+
+[sources.ftp]
+type = "file"
+include = ["/logs/ftp/ftp.json"]
+read_from = "beginning"
+
+[sources.auth_log]
+type = "file"
+include = ["/hostlogs/auth.log"]
+read_from = "beginning"
+
+[sources.syslog_file]
+type = "file"
+include = ["/hostlogs/syslog"]
+read_from = "beginning"
+
+# ── Transforms ────────────────────────────────────────────────────────
+
+# Normalised cross-honeypot event stream. Raw FTP events continue to ship
+# untouched via [sinks.loki_ftp]; this transform produces a parallel stream
+# under {job="events", honeypot="ftp"}.
+# password is plaintext — pyftpdlib receives the password before auth,
+# and HoneypotAuthorizer accepts everything so we always capture it.
+[transforms.ftp_events]
+type = "remap"
+inputs = ["ftp"]
+source = '''
+raw = parse_json!(string!(.message))
+
+event_type_map = {
+  "connection":  "connect",
+  "credentials": "login",
+}
+
+event_type, _ = get(event_type_map, [string!(raw.type)])
+if event_type == null { abort }
+
+. = {
+  "timestamp":     raw.timestamp,
+  "honeypot":      "ftp",
+  "protocol":      "ftp",
+  "src_ip":        raw.src_host,
+  "src_port":      raw.src_port,
+  "session_id":    null,
+  "event_type":    event_type,
+  "username":      raw.login,
+  "password":      raw.password,
+  "payload":       null,
+  "sample_sha256": null,
+}
+'''
+
+# ── Sinks ─────────────────────────────────────────────────────────────
+
+[sinks.loki_ftp]
+type = "loki"
+inputs = ["ftp"]
+endpoint = "http://${LOKI_HOST}:3100"
+labels.job = "ftp"
+labels.host = "${HOSTNAME}"
+
+[sinks.loki_ftp.encoding]
+codec = "text"
+
+[sinks.loki_ftp_events]
+type = "loki"
+inputs = ["ftp_events"]
+endpoint = "http://${LOKI_HOST}:3100"
+labels.job = "events"
+labels.honeypot = "ftp"
+labels.host = "${HOSTNAME}"
+
+[sinks.loki_ftp_events.encoding]
+codec = "json"
+
+[sinks.loki_auth]
+type = "loki"
+inputs = ["auth_log"]
+endpoint = "http://${LOKI_HOST}:3100"
+labels.job = "auth"
+labels.host = "${HOSTNAME}"
+
+[sinks.loki_auth.encoding]
+codec = "text"
+
+[sinks.loki_syslog]
+type = "loki"
+inputs = ["syslog_file"]
+endpoint = "http://${LOKI_HOST}:3100"
+labels.job = "syslog"
+labels.host = "${HOSTNAME}"
+
+[sinks.loki_syslog.encoding]
+codec = "text"
