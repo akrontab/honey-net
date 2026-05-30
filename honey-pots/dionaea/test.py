@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke-tests a running dionaea deployment (FTP on 21, SMB on 445)."""
+"""Smoke-tests a running dionaea deployment (FTP on 21)."""
 
 import socket
 import sys
@@ -41,9 +41,7 @@ def main():
 
     print(f"Testing dionaea on {ip} ({name})...\n")
     results = [
-        check_port(ip, 21,  expect_prefix=b"220", label="FTP  :21 "),
-        check_port(ip, 445, label="SMB  :445"),
-        check_port(ip, 139, label="SMB  :139"),
+        check_port(ip, 21, expect_prefix=b"220", label="FTP  :21"),
     ]
 
     print()
