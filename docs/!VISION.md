@@ -49,7 +49,7 @@ than the sum of its events.
 *Pointers.* The first protocol graduation — an HTTP/web-app honeypot — is worked
 in `docs/http-honeypot-plan.md`. Malware-side enrichment has its own plan in
 `malware-catalog/PLAN.md`. New honeypot protocols slot into the self-describing
-package model (`docs/DESIGN.md`) with no control-plane changes.
+package model (`docs/!DESIGN.md`) with no control-plane changes.
 
 ### Reach & multi-operator
 
@@ -63,8 +63,9 @@ differences. Multi-operator is the difference between a personal project and
 something a small team can run; it's already surfaced in `BACKLOG.md` as a
 near-term want.
 
-*Pointers.* Multi-operator accounts are queued in `BACKLOG.md`. Fleet growth is
-gated by provisioning ergonomics — see *Operational maturity*.
+*Pointers.* Multi-operator host access is worked in `docs/multi-operator-plan.md`
+(refines the queued `BACKLOG.md` item). Fleet growth is gated by provisioning
+ergonomics — see *Operational maturity*.
 
 ### Cloud portability & infra evolution
 
@@ -124,4 +125,5 @@ scaling. Maturity here is the multiplier that makes reach and portability
 affordable.
 
 *Pointers.* Centers on the control plane (`honey.py`, `scripts/`, `lib/`) and the
-self-describing package model (`docs/DESIGN.md`).
+self-describing package model (`docs/!DESIGN.md`). Host/network failure modes and
+the response playbook are worked in `docs/incident-response-plan.md`.

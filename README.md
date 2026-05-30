@@ -61,8 +61,8 @@ Select **logs** to pull log files locally. Open Grafana at `http://<log-stack-ta
 
 ## Design
 
-> **Deeper reading in `docs/`:** [`DESIGN.md`](docs/DESIGN.md) explains the
-> package model and data flows; [`VISION.md`](docs/VISION.md) covers where the
+> **Deeper reading in `docs/`:** [`!DESIGN.md`](docs/!DESIGN.md) explains the
+> package model and data flows; [`!VISION.md`](docs/!VISION.md) covers where the
 > project is headed; deep single-initiative plans (e.g.
 > [`aws-eks-migration.md`](docs/aws-eks-migration.md),
 > [`http-honeypot-plan.md`](docs/http-honeypot-plan.md)) live there too.
@@ -96,7 +96,7 @@ honey-net/
 │       ├── sandbox-submitter/← tria.ge dynamic analysis (opt-in)
 │       ├── ui/               ← nginx + hash-routed browser UI
 │       └── vector/           ← ships submission events to Loki
-├── docs/                     ← design & planning (DESIGN, VISION, plan files)
+├── docs/                     ← design & planning (!DESIGN, !VISION, plan files)
 ├── terraform/                ← infrastructure-as-code
 ├── lib/                      ← shared Python library (config, ssh, color, package…)
 ├── scripts/

@@ -1,6 +1,6 @@
 # HTTP / Web-App Honeypot — Plan
 
-First graduation from the **Detection & intel depth** theme in `docs/VISION.md`:
+First graduation from the **Detection & intel depth** theme in `docs/!VISION.md`:
 add an HTTP honeypot package so the network captures web-layer attacks — the
 single largest source of opportunistic internet traffic the current pots
 (SSH/Telnet, MySQL, SMB, FTP) don't see.
