@@ -31,6 +31,7 @@ RUN git clone https://github.com/DinoTools/dionaea.git .
 RUN cmake \
     -DCMAKE_INSTALL_PREFIX=/opt/dionaea \
     -DWITH_MODULE_EMU=OFF \
+    -DWITH_MODULE_NFQ=OFF \
     -S . -B _build && \
     cmake --build _build -j$(nproc) && \
     cmake --install _build
