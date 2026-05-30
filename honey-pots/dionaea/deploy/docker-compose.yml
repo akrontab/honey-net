@@ -15,7 +15,7 @@ services:
       - ../inbox/dionaea:/opt/dionaea/var/lib/dionaea/binaries
     security_opt:
       - no-new-privileges:true
-      - seccomp:unconfined
+      - seccomp=unconfined
     deploy:
       resources:
         limits:

@@ -62,7 +62,7 @@ To recover provenance: pivot through `{job="dionaea"}` on `md5hash`. If this bec
 ### seccomp=unconfined required on kernel 6.8+
 Docker's default seccomp profile blocks a syscall used by dionaea's libnetfilter-queue
 or libpcap bindings. The result is a SIGSEGV (exit 139) with no output after the emu.so
-message. The compose file sets `seccomp:unconfined` to work around this. `no-new-privileges`
+message. The compose file sets `seccomp=unconfined` to work around this. `no-new-privileges`
 is kept — it's the more important constraint for a honeypot.
 
 ### Port 445 conflicts
