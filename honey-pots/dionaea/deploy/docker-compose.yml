@@ -5,9 +5,7 @@ services:
     container_name: dionaea
     restart: unless-stopped
     ports:
-      - "21:21"
-      - "139:139"
-      - "445:445"
+      - "0.0.0.0:21:21"
     volumes:
       - ./dionaea/services-enabled:/opt/dionaea/etc/dionaea/services-enabled:ro
       - ./dionaea/ihandlers-enabled:/opt/dionaea/etc/dionaea/ihandlers-enabled:ro

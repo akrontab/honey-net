@@ -5,8 +5,8 @@ services:
     container_name: cowrie
     restart: unless-stopped
     ports:
-      - "22:2222"
-      - "23:2323"
+      - "0.0.0.0:22:2222"
+      - "0.0.0.0:23:2323"
     volumes:
       - ./cowrie/etc:/cowrie/cowrie-git/etc
       - ./cowrie/honeyfs:/cowrie/cowrie-git/src/cowrie/data/honeyfs:ro

@@ -5,8 +5,8 @@ services:
     container_name: smb
     restart: unless-stopped
     ports:
-      - "139:139"
-      - "445:445"
+      - "0.0.0.0:139:139"
+      - "0.0.0.0:445:445"
     volumes:
       - ./volumes/logs:/logs
     environment:
