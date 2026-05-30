@@ -39,4 +39,4 @@ RUN cmake \
 
 EXPOSE 21 139 445
 
-CMD ["/opt/dionaea/bin/dionaea", "-D"]
+CMD ["/opt/dionaea/bin/dionaea"]

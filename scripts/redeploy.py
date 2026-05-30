@@ -80,8 +80,14 @@ def main():
     )
 
     def honey(cmd: str) -> str:
-        """Wrap a shell command to run as the honey service user."""
-        return f"su -s /bin/bash honey -c '{cmd}'"
+        """Wrap a shell command to run as the honey user with rootless Docker env.
+        HONEY_UID must be set in the outer shell before this expands."""
+        return (
+            "su -s /bin/bash honey -c "
+            f'"export XDG_RUNTIME_DIR=/run/user/$HONEY_UID '
+            f'DOCKER_HOST=unix:///run/user/$HONEY_UID/docker.sock && '
+            f'cd /opt/{name} && {cmd}"'
+        )
 
     if server["type"] == "honeypot":
         components = (
@@ -94,11 +100,11 @@ def main():
             for svc in component_build_services(name, base)
         ]
         docker_steps = [f"{compose_cmd} build {svc}" for svc in build_svcs] + [f"{compose_cmd} up -d"]
-        restart_cmd = f"{rsync_cmd} && {honey(' && '.join(docker_steps))}"
+        restart_cmd = f"HONEY_UID=$(id -u honey) && {rsync_cmd} && {honey(' && '.join(docker_steps))}"
     else:
         build_svcs = backend_build_services(name)
         docker_steps = [f"{compose_cmd} build {svc}" for svc in build_svcs] + [f"{compose_cmd} up -d"]
-        restart_cmd = f"{rsync_cmd} && {honey(' && '.join(docker_steps))}"
+        restart_cmd = f"HONEY_UID=$(id -u honey) && {rsync_cmd} && {honey(' && '.join(docker_steps))}"
 
     print(f"Restarting stack on {name}...")
     r = subprocess.run(["ssh"] + ssh_opts + [remote, restart_cmd])

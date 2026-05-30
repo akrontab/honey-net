@@ -11,6 +11,7 @@ ufw allow "445/tcp" comment 'dionaea SMB honeypot'
 # ── Create volume directories ─────────────────────────────────────────
 echo "[dionaea] Creating volume directories..."
 mkdir -p "${DEPLOY_DIR}/dionaea/volumes/logs"
+chown honey:honey "${DEPLOY_DIR}/dionaea/volumes/logs"
 
 # Per-honeypot inbox subdir — server-config created the parent inbox/ with 777.
 # Dionaea writes captured binaries here (md5-named); metadata addon canonicalises.
