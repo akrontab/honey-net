@@ -1,0 +1,46 @@
+services:
+  smb:
+    build:
+      context: ./smb
+    container_name: smb
+    restart: unless-stopped
+    ports:
+      - "139:139"
+      - "445:445"
+    volumes:
+      - ./volumes/logs:/logs
+    environment:
+      - SMB_LOG_FILE=/logs/smb.json
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.3'
+    networks:
+      - honeypot
+
+  vector:
+    image: timberio/vector:0.42.0-alpine
+    container_name: vector
+    restart: unless-stopped
+    user: root
+    command: ["--config", "/etc/vector/vector.toml"]
+    volumes:
+      - ./volumes/logs:/logs/smb:ro
+      - /var/log:/hostlogs:ro
+      - ./vector/vector.toml:/etc/vector/vector.toml:ro
+      - vector-data:/vector-data
+    environment:
+      - LOKI_HOST=${LOKI_HOST}
+      - HOSTNAME=${HONEYPOT_HOSTNAME:-smb-honeypot}
+    networks:
+      - honeypot
+
+volumes:
+  vector-data:
+
+networks:
+  honeypot:
+    driver: bridge

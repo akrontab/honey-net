@@ -1,8 +1,0 @@
-- name: smb
-  config: []
-  listen:
-    - addresses:
-        - 0.0.0.0
-      ports:
-        - 445
-        - 139

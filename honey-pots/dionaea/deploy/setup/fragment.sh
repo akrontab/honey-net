@@ -1,12 +1,11 @@
 # Dionaea honeypot fragment — appended to server-config/setup.sh by deploy.py.
 # Runs after base hardening and Tailscale are in place.
-# Opens SMB and FTP ports, creates volume directories, and starts the stack.
+# Opens FTP port, creates volume directories, and starts the stack.
+# SMB ports (139, 445) are owned by the smb fragment when paired together.
 
 # ── Open honeypot ports ───────────────────────────────────────────────
-echo "[dionaea] Opening SMB and FTP honeypot ports..."
-ufw allow "21/tcp"  comment 'dionaea FTP honeypot'
-ufw allow "139/tcp" comment 'dionaea SMB honeypot'
-ufw allow "445/tcp" comment 'dionaea SMB honeypot'
+echo "[dionaea] Opening FTP honeypot port..."
+ufw allow "21/tcp" comment 'dionaea FTP honeypot'
 
 # ── Create volume directories ─────────────────────────────────────────
 echo "[dionaea] Creating volume directories..."
@@ -30,7 +29,6 @@ echo "================================================================"
 echo "  Setup complete: ${SERVER_NAME}"
 echo ""
 echo "  FTP honeypot port  : 21"
-echo "  SMB honeypot ports : 139, 445"
 echo "  Real SSH port      : ${REAL_SSH_PORT} (Tailscale only)"
 echo "  Tailscale IP       : ${TAILSCALE_IP}"
 echo ""

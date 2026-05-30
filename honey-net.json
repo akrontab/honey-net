@@ -30,6 +30,6 @@
     "ssh_key": "~/.ssh/smb-ftp-linode",
     "tailscale_ephemeral": true,
     "ports": [21, 139, 445],
-    "honeypots": ["dionaea"]
+    "honeypots": ["dionaea", "smb"]
   }
 ]

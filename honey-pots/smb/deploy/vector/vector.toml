@@ -1,0 +1,97 @@
+data_dir = "/vector-data"
+
+# ── Sources ───────────────────────────────────────────────────────────
+
+[sources.smb]
+type = "file"
+include = ["/logs/smb/smb.json"]
+read_from = "beginning"
+
+[sources.auth_log]
+type = "file"
+include = ["/hostlogs/auth.log"]
+read_from = "beginning"
+
+[sources.syslog_file]
+type = "file"
+include = ["/hostlogs/syslog"]
+read_from = "beginning"
+
+# ── Transforms ────────────────────────────────────────────────────────
+
+# Normalised cross-honeypot event stream. Raw SMB events continue to ship
+# untouched via [sinks.loki_smb]; this transform produces a parallel stream
+# under {job="events", honeypot="smb"}.
+# password contains the full NTLMv2 hash string when captured (hashcat-ready),
+# or null if only the username was extracted from the AUTHENTICATE_MESSAGE line.
+[transforms.smb_events]
+type = "remap"
+inputs = ["smb"]
+source = '''
+raw = parse_json!(string!(.message))
+
+event_type_map = {
+  "connection":  "connect",
+  "credentials": "login",
+}
+
+event_type, _ = get(event_type_map, [string!(raw.type)])
+if event_type == null { abort }
+
+. = {
+  "timestamp":     raw.timestamp,
+  "honeypot":      "smb",
+  "protocol":      "smb",
+  "src_ip":        raw.src_host,
+  "src_port":      raw.src_port,
+  "session_id":    null,
+  "event_type":    event_type,
+  "username":      raw.login,
+  "password":      raw.password,
+  "payload":       null,
+  "sample_sha256": null,
+}
+'''
+
+# ── Sinks ─────────────────────────────────────────────────────────────
+
+[sinks.loki_smb]
+type = "loki"
+inputs = ["smb"]
+endpoint = "http://${LOKI_HOST}:3100"
+labels.job = "smb"
+labels.host = "${HOSTNAME}"
+
+[sinks.loki_smb.encoding]
+codec = "text"
+
+[sinks.loki_smb_events]
+type = "loki"
+inputs = ["smb_events"]
+endpoint = "http://${LOKI_HOST}:3100"
+labels.job = "events"
+labels.honeypot = "smb"
+labels.host = "${HOSTNAME}"
+
+[sinks.loki_smb_events.encoding]
+codec = "json"
+
+[sinks.loki_auth]
+type = "loki"
+inputs = ["auth_log"]
+endpoint = "http://${LOKI_HOST}:3100"
+labels.job = "auth"
+labels.host = "${HOSTNAME}"
+
+[sinks.loki_auth.encoding]
+codec = "text"
+
+[sinks.loki_syslog]
+type = "loki"
+inputs = ["syslog_file"]
+endpoint = "http://${LOKI_HOST}:3100"
+labels.job = "syslog"
+labels.host = "${HOSTNAME}"
+
+[sinks.loki_syslog.encoding]
+codec = "text"
