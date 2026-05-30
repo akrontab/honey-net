@@ -221,19 +221,22 @@ def _gen_ts_key(api_key, *, ephemeral=False):
     return resp.json()["key"]
 
 
-def _await_ssh(pub_ip, key, *, timeout=120, interval=10):
+def _await_ssh(pub_ip, key, *, timeout=240, interval=10):
     """Block until SSH on port 22 accepts connections (VM boot wait)."""
     print(f"  Waiting for SSH on {pub_ip}", end="", flush=True)
     deadline = time.time() + timeout
     while time.time() < deadline:
-        r = subprocess.run(
-            ssh_base_args(key, 22, pub_ip) + ["exit"],
-            capture_output=True,
-            timeout=15,
-        )
-        if r.returncode == 0:
-            print(" ready")
-            return
+        try:
+            r = subprocess.run(
+                ssh_base_args(key, 22, pub_ip) + ["exit"],
+                capture_output=True,
+                timeout=15,
+            )
+            if r.returncode == 0:
+                print(" ready")
+                return
+        except subprocess.TimeoutExpired:
+            pass  # connection established but slow — keep retrying
         print(".", end="", flush=True)
         time.sleep(interval)
     print()
