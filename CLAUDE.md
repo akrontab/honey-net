@@ -45,3 +45,4 @@ See `server-config/CLAUDE.md` for hardening details.
 | `terraform/` | Infrastructure-as-code (Linode VMs) | `terraform/CLAUDE.md` |
 | `lib/` | Shared Python library (config, ssh, packages, servers) | — |
 | `scripts/` | Control plane scripts (provision, deploy, sync) | — |
+| `docs/` | Architecture & planning prose | `DESIGN.md`, `VISION.md`, plan files |
