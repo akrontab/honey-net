@@ -59,11 +59,11 @@ To recover provenance: pivot through `{job="dionaea"}` on `md5hash`. If this bec
 
 ## Gotchas
 
-### seccomp=unconfined required on kernel 6.8+
-Docker's default seccomp profile blocks a syscall used by dionaea's libnetfilter-queue
-or libpcap bindings. The result is a SIGSEGV (exit 139) with no output after the emu.so
-message. The compose file sets `seccomp=unconfined` to work around this. `no-new-privileges`
-is kept — it's the more important constraint for a honeypot.
+### SIGSEGV (exit 139) on kernel 6.8+ — libnetfilter-queue and libpcap removed
+Dionaea crashes immediately on modern kernels (6.8+) when the nfqhook or pcap modules
+are compiled in. The Dockerfile omits `libnetfilter-queue-dev` and `libpcap-dev` so those
+modules are skipped at cmake time. `seccomp=unconfined` is also set as defence-in-depth
+but the module omission is the real fix.
 
 ### Port 445 conflicts
 Ubuntu 24.04 should not bind 445 by default but verify: `ss -tlnp | grep 445`.

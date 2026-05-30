@@ -52,8 +52,8 @@ class _HoneypotServer(smbserver.SimpleSMBServer):
     def __init__(self, port: int) -> None:
         super().__init__(listenAddress="0.0.0.0", listenPort=port)
         self._port = port
-        # Dummy share — makes SMB negotiation complete so we capture more auth attempts.
-        self.addShare("IPC$", "/tmp", "")
+        # impacket's SimpleSMBServer.__init__ already adds IPC$ by default.
+        # Calling addShare("IPC$", ...) again raises "Section already exists".
 
     def log(self, msg: str, level: int = logging.DEBUG) -> None:
         logging.log(level, "[smb:%d] %s", self._port, msg)

@@ -12,10 +12,8 @@ RUN apt-get update && apt-get install -y \
     libcurl4-gnutls-dev \
     libev-dev \
     libglib2.0-dev \
-    libnetfilter-queue-dev \
     libnl-3-dev \
     libnl-route-3-dev \
-    libpcap-dev \
     libssl-dev \
     libtool \
     libudns-dev \
