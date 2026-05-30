@@ -5,6 +5,7 @@ Ideas and features to implement. Tell Claude "implement the next backlog item" t
 ## Pending
 
 - [ ] Nice to have later: multiple operators with thier own user accounts with sudo access for host management. Maintain keybased logins
+- [ ] Update README and remove references to specific honeypots in logs
 
 ## Maybes
 
