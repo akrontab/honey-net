@@ -66,7 +66,7 @@ echo ""
 echo "[1/9] Updating system packages..."
 apt-get update -qq
 DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq
-apt-get install -y -qq ufw curl gnupg ca-certificates fail2ban rsync uidmap
+apt-get install -y -qq ufw curl gnupg ca-certificates fail2ban rsync uidmap passt
 
 # ── 2. Install Docker ────────────────────────────────────────────────
 echo "[2/9] Installing Docker..."
@@ -114,6 +114,16 @@ mkdir -p /home/honey/.config/docker
 cat > /home/honey/.config/docker/daemon.json <<'DOCKEREOF'
 {"dns": ["8.8.8.8", "1.1.1.1"]}
 DOCKEREOF
+
+# Switch rootless Docker's network driver from slirp4netns to pasta.
+# slirp4netns (libslirp) blocks inbound connections on ports 139 and 445 (SMB)
+# as an anti-worm measure — pasta does not have this restriction.
+mkdir -p /home/honey/.config/systemd/user/docker.service.d
+cat > /home/honey/.config/systemd/user/docker.service.d/pasta.conf <<'PASTAEOF'
+[Service]
+Environment=DOCKERD_ROOTLESS_ROOTLESSKIT_NET=pasta
+PASTAEOF
+
 chown -R honey:honey /home/honey/.config
 
 # Persistent user slice: systemd keeps honey's session alive across reboots without a login.
