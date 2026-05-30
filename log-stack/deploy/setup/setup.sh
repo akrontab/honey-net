@@ -34,8 +34,11 @@ if [[ "${1:-}" == "--redeploy" ]]; then
   cp -r "${SCRIPT_DIR}/../." "${DEPLOY_DIR}/"
   chown -R honey:honey "${DEPLOY_DIR}"
   chmod -R a+rX "${DEPLOY_DIR}"
-  su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && docker compose up -d"
-  su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && docker compose restart grafana"
+  HONEY_UID=$(id -u honey)
+  HONEY_DOCKER_HOST="unix:///run/user/${HONEY_UID}/docker.sock"
+  HONEY_DC="XDG_RUNTIME_DIR=/run/user/${HONEY_UID} DOCKER_HOST=${HONEY_DOCKER_HOST} docker compose"
+  su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && ${HONEY_DC} up -d"
+  su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && ${HONEY_DC} restart grafana"
   echo "Done."
   exit 0
 fi
@@ -70,7 +73,7 @@ echo ""
 echo "[1/9] Updating system packages..."
 apt-get update -qq
 DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq
-apt-get install -y -qq ufw curl gnupg ca-certificates fail2ban
+apt-get install -y -qq ufw curl gnupg ca-certificates fail2ban uidmap
 
 # ── 2. Install Docker ────────────────────────────────────────────────
 echo "[2/9] Installing Docker..."
@@ -85,20 +88,55 @@ $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
   | tee /etc/apt/sources.list.d/docker.list > /dev/null
 
 apt-get update -qq
-apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin
+apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin docker-ce-rootless-extras
 
 systemctl enable --now docker
 
-# Set explicit DNS for containers — without this, apt-get update fails inside
-# containers on hosts where Docker's default resolver can't reach the internet.
-cat > /etc/docker/daemon.json <<EOF
+# DNS for root's dockerd.
+cat > /etc/docker/daemon.json <<'EOF'
 {"dns": ["8.8.8.8", "1.1.1.1"]}
 EOF
 
-# Create non-root service user for running Docker/Compose.
+# Create non-root service user — no docker group; runs Docker stacks via rootless dockerd.
 # No SSH access (AllowUsers root in sshd config) — only reachable via su.
 id honey &>/dev/null || useradd -m -s /bin/bash honey
-usermod -aG docker honey
+
+# Allocate subordinate UID/GID ranges for honey's user namespaces (rootless Docker requirement).
+grep -q "^honey:" /etc/subuid || echo "honey:100000:65536" >> /etc/subuid
+grep -q "^honey:" /etc/subgid || echo "honey:100000:65536" >> /etc/subgid
+
+HONEY_UID=$(id -u honey)
+HONEY_DOCKER_HOST="unix:///run/user/${HONEY_UID}/docker.sock"
+HONEY_DC="XDG_RUNTIME_DIR=/run/user/${HONEY_UID} DOCKER_HOST=${HONEY_DOCKER_HOST} docker compose"
+
+# DNS for honey's rootless dockerd.
+mkdir -p /home/honey/.config/docker
+cat > /home/honey/.config/docker/daemon.json <<'EOF'
+{"dns": ["8.8.8.8", "1.1.1.1"]}
+EOF
+chown -R honey:honey /home/honey/.config
+
+loginctl enable-linger honey
+
+timeout 15 bash -c "until [[ -S /run/user/${HONEY_UID}/bus ]]; do sleep 0.5; done" || {
+  echo "ERROR: honey user session bus not ready — is systemd-logind running?" >&2; exit 1
+}
+
+su -s /bin/bash honey -c "
+  export XDG_RUNTIME_DIR=/run/user/${HONEY_UID}
+  export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${HONEY_UID}/bus
+  export HOME=/home/honey
+  dockerd-rootless-setuptool.sh install --force
+  systemctl --user enable docker
+  systemctl --user start docker
+"
+
+timeout 30 bash -c "until su -s /bin/bash honey -c \
+  'XDG_RUNTIME_DIR=/run/user/${HONEY_UID} DOCKER_HOST=${HONEY_DOCKER_HOST} docker info >/dev/null 2>&1'; \
+  do sleep 1; done" || {
+  echo "ERROR: rootless dockerd did not start in time" >&2; exit 1
+}
+echo "  Rootless dockerd ready (uid=${HONEY_UID}, socket=${HONEY_DOCKER_HOST})"
 
 # ── 3. UFW — open real SSH port before touching sshd ────────────────
 echo "[3/9] Configuring UFW..."
@@ -170,8 +208,8 @@ EOF
 chown honey:honey "${DEPLOY_DIR}/.env"
 chmod 600 "${DEPLOY_DIR}/.env"
 
-su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && docker compose pull"
-su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && docker compose up -d"
+su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && ${HONEY_DC} pull"
+su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && ${HONEY_DC} up -d"
 
 echo ""
 echo "================================================================"
@@ -183,8 +221,8 @@ echo "  Grafana         : http://${TAILSCALE_IP}:3000  (Tailscale only)"
 echo "  Loki            : http://${TAILSCALE_IP}:3100  (Tailscale only)"
 echo ""
 echo "  Useful commands:"
-echo "    docker compose -f ${DEPLOY_DIR}/docker-compose.yml logs -f"
-echo "    docker compose -f ${DEPLOY_DIR}/docker-compose.yml ps"
+echo "    DOCKER_HOST=${HONEY_DOCKER_HOST} docker compose -f ${DEPLOY_DIR}/docker-compose.yml logs -f"
+echo "    DOCKER_HOST=${HONEY_DOCKER_HOST} docker compose -f ${DEPLOY_DIR}/docker-compose.yml ps"
 echo ""
 echo "  Next: add the Cowrie host to Tailscale and configure Vector"
 echo "  to ship logs to http://${TAILSCALE_IP}:3100"

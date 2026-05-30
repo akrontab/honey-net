@@ -66,7 +66,7 @@ echo ""
 echo "[1/9] Updating system packages..."
 apt-get update -qq
 DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq
-apt-get install -y -qq ufw curl gnupg ca-certificates fail2ban rsync
+apt-get install -y -qq ufw curl gnupg ca-certificates fail2ban rsync uidmap
 
 # ── 2. Install Docker ────────────────────────────────────────────────
 echo "[2/9] Installing Docker..."
@@ -81,20 +81,66 @@ $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
   | tee /etc/apt/sources.list.d/docker.list > /dev/null
 
 apt-get update -qq
-apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin
+apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin docker-ce-rootless-extras
 
 systemctl enable --now docker
 
-# Set explicit DNS for containers — without this, apt-get inside containers
-# may fail if Docker's default resolver can't reach the internet.
+# DNS for root's dockerd — used by any admin containers run as root.
 cat > /etc/docker/daemon.json <<'DOCKEREOF'
 {"dns": ["8.8.8.8", "1.1.1.1"]}
 DOCKEREOF
 
-# Create non-root service user for running Docker/Compose.
+# Create non-root service user — no docker group; runs Docker stacks via rootless dockerd.
 # No SSH access (AllowUsers root in sshd config) — only reachable via su.
 id honey &>/dev/null || useradd -m -s /bin/bash honey
-usermod -aG docker honey
+
+# adm group: read-only access to /var/log files (auth.log, syslog).
+# Required so Vector's container-root (which maps to honey on the host) can read host logs.
+usermod -aG adm honey
+
+# Allocate subordinate UID/GID ranges for honey's user namespaces (rootless Docker requirement).
+grep -q "^honey:" /etc/subuid || echo "honey:100000:65536" >> /etc/subuid
+grep -q "^honey:" /etc/subgid || echo "honey:100000:65536" >> /etc/subgid
+
+HONEY_UID=$(id -u honey)
+HONEY_DOCKER_HOST="unix:///run/user/${HONEY_UID}/docker.sock"
+# Prefix for all su-honey docker compose calls — routes to honey's rootless daemon.
+HONEY_DC="XDG_RUNTIME_DIR=/run/user/${HONEY_UID} DOCKER_HOST=${HONEY_DOCKER_HOST} docker compose"
+# First subUID: used by fragments to compute host-side UIDs for container non-root users.
+HONEY_SUBUID_START=$(awk -F: -v user=honey '$1==user{print $2}' /etc/subuid)
+
+# DNS for honey's rootless dockerd (mirrors /etc/docker/daemon.json for root's daemon).
+mkdir -p /home/honey/.config/docker
+cat > /home/honey/.config/docker/daemon.json <<'DOCKEREOF'
+{"dns": ["8.8.8.8", "1.1.1.1"]}
+DOCKEREOF
+chown -R honey:honey /home/honey/.config
+
+# Persistent user slice: systemd keeps honey's session alive across reboots without a login.
+loginctl enable-linger honey
+
+# Wait for systemd-logind to create the XDG runtime dir and start the user D-Bus socket.
+timeout 15 bash -c "until [[ -S /run/user/${HONEY_UID}/bus ]]; do sleep 0.5; done" || {
+  echo "ERROR: honey user session bus not ready — is systemd-logind running?" >&2; exit 1
+}
+
+# Install rootless dockerd and start it under honey's user session.
+su -s /bin/bash honey -c "
+  export XDG_RUNTIME_DIR=/run/user/${HONEY_UID}
+  export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${HONEY_UID}/bus
+  export HOME=/home/honey
+  dockerd-rootless-setuptool.sh install --force
+  systemctl --user enable docker
+  systemctl --user start docker
+"
+
+# Verify the daemon is accepting connections before proceeding to fragment builds.
+timeout 30 bash -c "until su -s /bin/bash honey -c \
+  'XDG_RUNTIME_DIR=/run/user/${HONEY_UID} DOCKER_HOST=${HONEY_DOCKER_HOST} docker info >/dev/null 2>&1'; \
+  do sleep 1; done" || {
+  echo "ERROR: rootless dockerd did not start in time" >&2; exit 1
+}
+echo "  Rootless dockerd ready (uid=${HONEY_UID}, socket=${HONEY_DOCKER_HOST})"
 
 # ── 3. UFW: open port 65022 before touching sshd ────────────────────
 echo "[3/9] Opening real SSH port ${REAL_SSH_PORT} in UFW..."
@@ -191,7 +237,7 @@ chmod 600 "${DEPLOY_DIR}/.env"
 if [[ -z "${LOKI_HOST}" ]]; then
   echo ""
   echo "  WARNING: LOKI_HOST is not set. Vector will not ship logs until you"
-  echo "  edit ${DEPLOY_DIR}/.env and run: docker compose -f ${DEPLOY_DIR}/docker-compose.yml up -d"
+  echo "  edit ${DEPLOY_DIR}/.env and run: DOCKER_HOST=${HONEY_DOCKER_HOST} docker compose -f ${DEPLOY_DIR}/docker-compose.yml up -d"
 fi
 
 # Restart Docker to restore its NAT/MASQUERADE iptables rules after Tailscale

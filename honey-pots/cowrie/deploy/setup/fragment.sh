@@ -17,17 +17,19 @@ mkdir -p "${DEPLOY_DIR}/cowrie/volumes/logs"
 mkdir -p "${DEPLOY_DIR}/inbox/cowrie"
 chmod 777 "${DEPLOY_DIR}/inbox/cowrie"
 
-# Cowrie runs as UID 999 inside the container — volumes must be owned by it.
-# Config files must be world-readable so the in-container user can traverse them.
+# Cowrie runs as UID 999 inside the container. In rootless Docker, container UIDs >= 1
+# map to host subUIDs: container UID N → HONEY_SUBUID_START + N - 1.
+# So UID 999 inside → (HONEY_SUBUID_START + 998) on the host.
 find "${DEPLOY_DIR}/cowrie/cowrie" -type d -exec chmod 755 {} \;
 find "${DEPLOY_DIR}/cowrie/cowrie" -type f -exec chmod 644 {} \;
-chown -R 999:999 "${DEPLOY_DIR}/cowrie/volumes"
+COWRIE_HOST_UID=$(( HONEY_SUBUID_START + 999 - 1 ))
+chown -R "${COWRIE_HOST_UID}:${COWRIE_HOST_UID}" "${DEPLOY_DIR}/cowrie/volumes"
 
 # ── Build images (sequence matters — concurrent BuildKit crashes dockerd) ─────
 echo "[cowrie] Building cowrie image (with key-harvester extension)..."
-su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && docker compose build cowrie"
+su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && ${HONEY_DC} build cowrie"
 
 echo "[cowrie] Building capture-writer image..."
-su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && docker compose build capture-writer"
+su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && ${HONEY_DC} build capture-writer"
 
 echo "[cowrie] Cowrie configured — stack will start after all addons are set up."

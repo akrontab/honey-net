@@ -14,10 +14,10 @@ mkdir -p "${DEPLOY_DIR}/mysql/volumes/logs"
 # Build explicitly before "up" so malware-sender and mysql-honeypot
 # are never built concurrently — concurrent BuildKit builds crash dockerd.
 echo "[mysql] Building mysql-honeypot image..."
-su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && docker compose build mysql-honeypot"
+su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && ${HONEY_DC} build mysql-honeypot"
 
 echo "[mysql] Starting combined honeypot stack..."
-su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && docker compose up -d"
+su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && ${HONEY_DC} up -d"
 
 echo ""
 echo "================================================================"
@@ -36,6 +36,6 @@ else
 fi
 echo ""
 echo "  Useful commands:"
-echo "    docker compose -f ${DEPLOY_DIR}/docker-compose.yml logs -f mysql-honeypot"
-echo "    docker compose -f ${DEPLOY_DIR}/docker-compose.yml ps"
+echo "    DOCKER_HOST=${HONEY_DOCKER_HOST} docker compose -f ${DEPLOY_DIR}/docker-compose.yml logs -f mysql-honeypot"
+echo "    DOCKER_HOST=${HONEY_DOCKER_HOST} docker compose -f ${DEPLOY_DIR}/docker-compose.yml ps"
 echo "================================================================"
