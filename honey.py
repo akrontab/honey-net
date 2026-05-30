@@ -40,6 +40,48 @@ def _ask(prompt, default=False):
         return False
     return default
 
+def _provision_args():
+    """Show server status and let the user pick which server to provision."""
+    from lib.config import load_manifest
+    import json
+    servers = load_manifest()
+    try:
+        state = json.loads((_repo / "state.json").read_text(encoding="utf-8"))
+    except Exception:
+        state = {}
+
+    print()
+    for i, s in enumerate(servers, 1):
+        entry  = state.get(s["name"], {})
+        ts_ip  = entry.get("tailscale_ip")
+        pub_ip = entry.get("public_ip")
+        if ts_ip:
+            status = _dim(f"live  {ts_ip}")
+        elif pub_ip:
+            status = f"VM exists, not set up  {pub_ip}"
+        else:
+            status = "not provisioned"
+        print(f"  [{_cyan(str(i))}] {s['name']:<22} {status}")
+    print(f"  [{_cyan('a')}] All servers\n")
+
+    try:
+        choice = input("  Select: ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return []
+
+    if choice == "a":
+        args = []
+    elif choice.isdigit() and 1 <= int(choice) <= len(servers):
+        args = ["--server", servers[int(choice) - 1]["name"]]
+    else:
+        print("  Invalid — provisioning all.")
+        args = []
+
+    if _ask("Skip terraform? (VM already exists, just run server setup)"):
+        args.append("--skip-terraform")
+    return args
+
 def _connect_args():
     pre = _ask("Pre-setup mode? (port 22, before setup.sh runs)")
     return ["--pre-setup"] if pre else []
@@ -50,8 +92,9 @@ def _gen_key_args():
 
 # (name, module, description, interactive-args-fn-or-None)
 COMMANDS = [
-    ("provision",  "provision",      "End-to-end provisioning: terraform + server setup", None),
-    ("redeploy",   "redeploy",       "Update a live server (port 65022, Tailscale)",  None),
+    ("provision",    "provision",    "End-to-end provisioning: terraform + server setup", _provision_args),
+    ("deprovision",  "deprovision",  "Destroy one server's VM, clean Tailscale, clear state", None),
+    ("redeploy",     "redeploy",     "Update a live server (port 65022, Tailscale)",  None),
     ("connect",    "connect",        "Open an SSH session to a server",               _connect_args),
     ("sync",       "sync_ips",       "Sync IPs from Terraform + Tailscale to state.json", None),
     ("logs",       "get_logs",       "Pull logs from a honeypot server",              None),
