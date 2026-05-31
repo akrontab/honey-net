@@ -37,6 +37,27 @@ The normalized stream exists because raw schemas differ across honeypots — Cow
 
 The two streams are complementary: use `{job="events"}` for dashboards and trend analysis; pivot to the raw stream on `session_id` when you need full session detail.
 
+### The VRL transform
+
+The normalizer is a Vector `remap` transform written in VRL (Vector Remap Language), one per honeypot in its `deploy/vector/vector.toml`. It reads the raw JSON source and emits the unified event; the raw stream ships untouched in parallel from the same Vector agent (raw sink `codec = "text"`, events sink `codec = "json"` with `labels.job = "events"`, `labels.honeypot = "<name>"`).
+
+The transform follows the same three-step shape in every pot:
+
+```
+raw = parse_json!(string!(.message))            # 1. parse the source line
+event_type, _ = get(event_type_map, [raw.eventid])  # 2. map source type → unified type
+if event_type == null { abort }                 # 3. drop anything unmapped
+. = { "timestamp": raw.timestamp, "honeypot": "cowrie", ... }  # project to the flat schema
+```
+
+Three design properties fall out of this shape:
+
+- **Mapping is a per-pot lookup table.** Each pot translates its own type discriminator (Cowrie `eventid`, dionaea `type`, MySQL `event`) into the shared `event_type` vocabulary. Source fields are projected by name; anything the source doesn't carry lands as `null`.
+- **The normalized stream is lossy by design.** The `abort` on an unmapped type means events with no `event_type` mapping exist only in the raw stream — noise is filtered out of `{job="events"}`, but so is anything a pot forgot to map. The raw stream is always the complete record.
+- **The transform is stateless, per-event.** VRL sees one line at a time with no cross-event memory. A field a honeypot emits only once per session (e.g. Cowrie states `protocol` only on the connect event) is therefore `null` on every later event in that session — recover it by joining on `session_id`, or enrich with a stateful transform.
+
+The contract is convention, not shared code: each pot's `remap` is maintained independently (there is no shared VRL include), so the unified schema is documented in `honey-pots/CLAUDE.md` and re-implemented per pot.
+
 See `honey-pots/CLAUDE.md` for the unified schema and per-honeypot CLAUDE.mds for event mappings.
 
 ## Malware pipeline
