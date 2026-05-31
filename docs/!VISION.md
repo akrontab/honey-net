@@ -15,6 +15,7 @@ VISION.md  ──►  deep plan file   ──►  BACKLOG.md   ──►  DESIGN
   `docs/aws-eks-migration.md` set) once it's worth a real design.
 - A plan graduates to **`BACKLOG.md`** once it's decomposed into buildable steps.
 - Don't put dates or task checklists here — those belong downstream.
+- The dependencies *between* plan files are tracked in `docs/!DEPENDENCIES.md`.
 
 ## North star
 
@@ -47,7 +48,10 @@ attributed campaigns and shareable indicators is what makes the data worth more
 than the sum of its events.
 
 *Pointers.* The first protocol graduation — an HTTP/web-app honeypot — is worked
-in `docs/http-honeypot-plan.md`. Malware-side enrichment has its own plan in
+in `docs/http-honeypot-plan.md`. The richer normalized schema (lean core +
+governed `meta`) that makes cross-honeypot questions single-expression — and
+de-couples the dashboards from Cowrie — is worked in
+`docs/normalized-schema-plan.md`. Malware-side enrichment has its own plan in
 `malware-catalog/PLAN.md`. New honeypot protocols slot into the self-describing
 package model (`docs/!DESIGN.md`) with no control-plane changes.
 
@@ -108,9 +112,11 @@ from (abuse.ch, MalwareBazaar).
 what you didn't. A sensor network that only collects is half a system — the value
 is realized when the intel drives a notification, a block, or a contribution back.
 
-*Pointers.* Sits on the normalized `{job="events"}` stream and the Grafana/Loki
-stack (`log-stack/`). Outbound sharing pairs with the export work under
-*Detection & intel depth*.
+*Pointers.* Worked in `docs/operationalizing-intel-plan.md` — alerting
+(detect-distributed / notify-central), the campaign maturity ladder, and the
+schema promotion that unblocks both. Sits on the normalized `{job="events"}`
+stream and the Grafana/Loki stack (`log-stack/`). Outbound sharing pairs with the
+export work under *Detection & intel depth*.
 
 ### Operational maturity
 
