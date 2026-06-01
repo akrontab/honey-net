@@ -85,8 +85,8 @@ Update the status when a plan graduates to `BACKLOG.md` or ships.
 | Plan | Status | VISION theme | Hard deps (blocked by) | Enables (blocks) | Soft / relates to |
 |---|---|---|---|---|---|
 | **normalized-schema-plan.md** | `building` · phases 1–2 shipped (`meta_*` contract live); residual phases outstanding | Detection & intel depth | — | operationalizing-intel (phase 1); http-honeypot (author into contract) | malware-catalog (download `meta` keys ↔ provenance) |
-| **operationalizing-intel-plan.md** | `draft` · blocked on normalized-schema | Operationalizing the intel | normalized-schema (phase 1) | — | malware-catalog (campaign L2/L3 selectors); dashboard-overhaul (owns rendering ⇄); incident-response (alerting ⇄, egress/breakout); Trust & audit secrets (forcing function) |
-| **dashboard-overhaul-plan.md** | `building` · Triage + Operate tiers graduated to `BACKLOG.md`; Hunt/deep-dives outstanding | Operationalizing the intel | normalized-schema (the `meta_*` contract) | — | operationalizing-intel (rendering ⇄ for pivot/replay/alert-state); alerting (P1 detection dashboard → Triage); malware-catalog (malware deep-dive) |
+| **operationalizing-intel-plan.md** | `draft` · hard block cleared (schema phase 1 shipped); next slice: phase 1 (url/dl_host/HASSH into normalized schema) | Operationalizing the intel | normalized-schema (phase 1) | — | malware-catalog (campaign L2/L3 selectors); dashboard-overhaul (owns rendering ⇄); incident-response (alerting ⇄, egress/breakout); Trust & audit secrets (forcing function) |
+| **dashboard-overhaul-plan.md** | `building` · Triage + Operate tiers shipped (JSON-validated; live verification pending); Hunt/deep-dives outstanding | Operationalizing the intel | normalized-schema (the `meta_*` contract) | — | operationalizing-intel (rendering ⇄ for pivot/replay/alert-state); alerting (P1 detection dashboard → Triage); malware-catalog (malware deep-dive) |
 | **alerting-plan.md** | `draft` · Phase 1 build-ready | Operationalizing the intel | — *(soft: normalized-schema for `meta_*`)* | — | operationalizing-intel (campaign-novelty needs correlation; digest sink); dashboard-overhaul (detection dashboard → Triage); malware-catalog (novelty registry / family); incident-response (security-model / egress gap) |
 | **http-honeypot-plan.md** | `built` · phases 1–3 on `mysql-ssh`; :443 + dashboard outstanding | Detection & intel depth | — *(strongly: after normalized-schema)* | — | malware-catalog (feeds uploaded samples) |
 | **malware-catalog/PLAN.md** | `building` · see own `PLAN.md` | Detection & intel depth (malware) | — *(mostly standalone)* | operationalizing-intel campaign features | http-honeypot (consumes its samples) |
@@ -98,25 +98,28 @@ Update the status when a plan graduates to `BACKLOG.md` or ships.
 
 Respecting the hard edges, the near-term path is:
 
-1. **`normalized-schema-plan.md`** — the keystone. Unblocks operationalizing
-   phase 1 *and* cleanly precedes the HTTP pot. Nothing else in the intel cluster
-   should start first.
-2. **In parallel after (1):**
-   - **`operationalizing-intel-plan.md`** — phase 1 (the schema slice) onward.
-   - **`dashboard-overhaul-plan.md`** — the `meta_*` contract has landed (schema
-     phases 1–2), so this is unblocked and a strong build-next candidate: the old
-     dashboards are being replaced and should be rebuilt onto the contract rather
-     than retrofitted. Its Hunt-tier pivot/replay coordinate with operationalizing.
-   - **`http-honeypot-plan.md`** — ⚠️ **already shipped ahead of (1)** (built on
-     `mysql-ssh`). It was meant to be authored *into* the generalized contract;
-     since normalized-schema landed after it, the HTTP pot will need retrofitting
-     when (1) is done — exactly the "hand-coded Cowrie-shaped" retrofit the keystone
-     was meant to avoid. Factor this into the normalized-schema work.
-3. **`alerting-plan.md`** — **Phase 1 is build-ready now** (needs only
-   `{job="events"}` + the catalog audit). The detection + PoC-dashboard phase has no
-   hard blockers and proves the rules before any notification work; a strong
-   parallel track. Selector-novelty rides the catalog; campaign-novelty waits on
-   operationalizing correlation.
+1. **`normalized-schema-plan.md`** — ✅ **phases 1–2 shipped** (keystone done).
+   Residual work: carry `protocol` onto every event + cowrie `client_fingerprint`/
+   `client_version` (deferred Q5 spike); telnet re-scope. These are non-blocking
+   for everything below except the Q5-gated panels.
+2. **Active parallel tracks:**
+   - **`dashboard-overhaul-plan.md`** — ✅ **Triage + Operate tiers shipped**
+     (pending live verification). Next: Hunt tier (Credential intel + Download &
+     infra intel on `meta_*`), coordinated with operationalizing for the campaign
+     pivot and session replay. Q5-blocked panels (fingerprint, telnet view) wait on
+     the schema spike.
+   - **`operationalizing-intel-plan.md`** — hard block cleared. Next slice: phase 1
+     (promote `url`/`dl_host`/HASSH into normalized schema per-honeypot).
+   - **`alerting-plan.md`** — **Phase 1 is build-ready now** (needs only
+     `{job="events"}` + the catalog audit). Detection rules → detector service →
+     detection dashboard (folds into Triage's alert-state slot). No hard blockers;
+     run as a parallel track.
+   - **`http-honeypot-plan.md`** — ⚠️ shipped ahead of the schema keystone. Will
+     need retrofitting once the normalized-schema residual work (Q5) touches
+     `protocol` and fingerprinting.
+3. **`malware-catalog/PLAN.md`** — independent; can advance anytime. Its Phase 1
+   enrichment (family / IOCs / imphash) should land *before* operationalizing's
+   campaign L2/L3, which consumes those selectors.
 4. **`malware-catalog/PLAN.md`** — independent; can advance anytime. Its Phase 1
    enrichment (family / IOCs / imphash) should land *before* operationalizing's
    campaign L2/L3, which consumes those selectors.
