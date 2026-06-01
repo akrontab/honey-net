@@ -224,17 +224,24 @@ campaign tooling — no dashboard edits. Today a new pot needs hand-written pane
    test when the third pot's `meta` lands.*
 2. **Fingerprint generalization** — is `client_fingerprint` one field with a
    `meta.fingerprint_type` discriminator (`hassh`/`ja3`/`ja4`), or separate keys?
-   *Lean: one field + type discriminator.*
+   ~~*Lean:*~~ **Resolved: one field + `fingerprint_type` discriminator.**
 3. **`payload` vs `meta.url`** — keep `payload=url` on downloads for
    back-compat *and* add `meta.url`/`meta.dl_host`, or move URL fully into `meta`?
-   *Lean: keep `payload` for back-compat, prefer `meta` in new dashboards.*
+   ~~*Lean: keep `payload` for back-compat.*~~ **Resolved: move URL fully into
+   `meta.url`** — `payload` is `null` on `download` events (it is the command/query
+   input slot only). Cleaner semantics; the cost is migrating any dashboard that
+   read `payload` on downloads (the campaign download panels) as part of phase 3.
 4. **Retro-fill** — re-emit `meta` for historical events (not possible past Loki's
    30-day retention) or accept the discontinuity at cutover? *Lean: accept it.*
 5. **Protocol on every event** — how does `protocol` get onto non-connect events so
    `protocol`-filtered cross-cutting queries (and the telnet re-scope) work? Upstream
    per-event emission, a stateful Vector `reduce` keyed on `session_id`, or a
-   session-join at read time? *Lean: stateful `reduce` in Vector — keeps the read path
-   simple and fixes it for every pot at once.*
+   session-join at read time? ~~*Lean: stateful `reduce` in Vector.*~~ **Deferred** —
+   the same correlation also blocks cowrie `client_fingerprint`/`client_version` (both
+   on separate eventids). Note: Vector `reduce` *collapses* events rather than
+   enriching-and-passing-through, so the lean is shakier than it reads — the real
+   options are an enrichment-table/`lua` stateful transform or upstream per-event
+   emission. Treated as a separate spike; the unblocked `meta` keys shipped without it.
 6. **Sensor identity** — is `(honeypot, host)` enough to identify a sensor for
    multi-operator/multi-sensor views, or does the schema need an explicit `sensor`/
    `server` field in the body (not just the `host` label)? *Lean: labels suffice;
@@ -242,12 +249,12 @@ campaign tooling — no dashboard edits. Today a new pot needs hand-written pane
 
 ## Graduation to BACKLOG
 
-- [ ] Core + standard `meta` vocabulary documented in `honey-pots/CLAUDE.md`
-- [ ] `cowrie` `vector.toml` emits `meta` (login_success, client_fingerprint, client_version, dl_host, dl_filename) + CLAUDE.md mapping
-- [ ] `mysql` `vector.toml` emits `meta.database` + CLAUDE.md mapping
-- [ ] `dionaea` `vector.toml` emits `meta.dl_host`/`dl_filename` + CLAUDE.md mapping
-- [ ] Cross-cutting dashboards migrated to `{job="events"}` + `meta_*`
-- [ ] `sensor-health` templated on `host` (not just `honeypot`) so a second sensor of the same type is visible
-- [ ] `protocol` carried onto all events (per question 5) — prerequisite for the telnet re-scope
-- [ ] `telnet-overview` re-scoped to a `protocol="telnet"` view
-- [ ] Dashboard checklist updated with the cross-cutting `{job="events"}`-only rule
+- [x] Core + standard `meta` vocabulary documented in `honey-pots/CLAUDE.md` *(phase 1 — done)*
+- [x] `cowrie` `vector.toml` emits `meta` (login_success, command_success, url, dl_host, dl_filename) + CLAUDE.md mapping — *client_fingerprint/client_version deferred (Q5)*
+- [x] `mysql` `vector.toml` emits `meta.database` (+ login_success, auth_method); `database` added to the `query` event in `protocol.py` + CLAUDE.md mapping
+- [x] `dionaea` `vector.toml` emits `meta.url`/`dl_host`/`dl_filename` + CLAUDE.md mapping
+- [ ] ~~Cross-cutting dashboards migrated to `{job="events"}` + `meta_*`~~ — **superseded by `docs/dashboard-overhaul-plan.md`**: dashboards are being completely overhauled there onto this contract (consuming `meta_login_success`/`command_success`/`url`/`dl_host`/`dl_filename`/`database`, following the `{job="events"}`-only rule). The enriched fields now exist for it to use.
+- [ ] ~~`sensor-health` templated on `host`~~ — folded into `dashboard-overhaul-plan.md` (Operate tier, re-keyed on `(honeypot, host)`).
+- [ ] `protocol` carried onto all events (per question 5) — **deferred spike** (also blocks cowrie `client_fingerprint`/`client_version`); prerequisite for the telnet re-scope.
+- [ ] `telnet-overview` re-scoped to a `protocol="telnet"` view — part of the dashboard overhaul, blocked on the Q5 spike above.
+- [x] Cross-cutting `{job="events"}`-only rule documented (in `honey-pots/CLAUDE.md` — "The hard rule").

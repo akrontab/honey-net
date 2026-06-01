@@ -12,6 +12,13 @@ is a no-regret move that unblocks almost everything else; the heavier analytics
 (campaign correlation, IP-novelty, outbound publishing) are explicitly
 **build-at-trigger** and must not be built ahead of real need.
 
+**Rendering lives elsewhere.** Everything in this plan that draws on a screen —
+the campaign **pivot dashboard** (L1), **event-timeline session replay**, and the
+**sensor-dark** surface — is owned and built by `docs/dashboard-overhaul-plan.md`
+(Hunt/Operate tiers). This plan keeps the non-visual actions: alert rules, the
+digest job, outbound publishing, and the catalog provenance join. The two dovetail
+at the render seam.
+
 ## Scope & timing — plan, not a build order
 
 The honeypots already *collect* the signal. What's missing is the step from

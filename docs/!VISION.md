@@ -114,9 +114,12 @@ is realized when the intel drives a notification, a block, or a contribution bac
 
 *Pointers.* Worked in `docs/operationalizing-intel-plan.md` — alerting
 (detect-distributed / notify-central), the campaign maturity ladder, and the
-schema promotion that unblocks both. Sits on the normalized `{job="events"}`
-stream and the Grafana/Loki stack (`log-stack/`). Outbound sharing pairs with the
-export work under *Detection & intel depth*.
+schema promotion that unblocks both. The **visualization surface** (the dashboard
+overhaul onto the normalized contract — workflow tiers + per-protocol deep-dives)
+is its own plan, `docs/dashboard-overhaul-plan.md`, which owns everything that
+renders. Both sit on the normalized `{job="events"}` stream and the Grafana/Loki
+stack (`log-stack/`). Outbound sharing pairs with the export work under
+*Detection & intel depth*.
 
 ### Operational maturity
 
