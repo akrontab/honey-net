@@ -1,0 +1,95 @@
+# HTTP Honeypot Package
+
+Low-interaction HTTP/web-app honeypot. Presents a generic corporate admin panel
+("Acme Internal Portal"), logs every request, captures credential POSTs and file
+uploads, and serves plausible bait for common scanner probes.
+
+## Build approach
+
+Pure stdlib — `python:3.12-slim` with **no third-party dependencies**
+(`http.server.ThreadingHTTPServer`). Build is near-instant. Full control of the
+log schema makes the normalised mapping trivial.
+
+## Ports
+
+| Port | Service |
+|------|---------|
+| 80   | HTTP |
+
+TLS (:443) is a later phase — see `docs/http-honeypot-plan.md`.
+
+## Persona & bait
+
+Generic admin panel, not a specific CMS. `/` is a landing page; `/admin`,
+`/login`, `/wp-login.php`, `/user/login` serve a sign-in form that captures
+credentials and returns `401` so brute-forcers keep guessing. Honeytoken paths
+(`/.env`, `/.git/config`, `/.aws/credentials`) return realistic-looking secrets
+to keep scanners engaged. Everything else returns a `404` but is still logged.
+
+## Logs and samples
+
+```
+/opt/<server>/http/volumes/logs/http.json   # attacker events (JSONL)
+/opt/<server>/inbox/http/                    # captured uploads + .capture.json sidecars
+```
+
+Uploaded bodies (multipart file parts, `PUT` bodies, `octet-stream`/binary POSTs)
+are written to `/samples` (bind-mounted from the inbox) as `<sha256>`, with a
+`<sha256>.capture.json` sidecar carrying `{src_ip, url, session_id, captured_at}`.
+The `metadata` addon canonicalises binary + sidecar into `/opt/<server>/inbox/<sha256>`
++ `<sha256>.meta.json` — **the same provenance contract Cowrie uses**, so the
+existing `metadata` + `malware-sender` pipeline picks them up with no changes.
+
+Shipped to Loki as `{job="http"}` (raw) and `{job="events", honeypot="http"}` (normalised).
+
+## Event types in http.json
+
+| `type` | Key fields |
+|---|---|
+| `connect` | `src_host`, `src_port`, `session_id` (per TCP connection) |
+| `request` | `method`, `path`, `payload` (`"<METHOD> <path>"`), `user_agent` |
+| `login` | `username`, `password` (form fields or HTTP Basic), `method`, `path` |
+| `download` | `filename`, `sample_sha256`, `size`, `path` (a sample was captured) |
+| `session_end` | `session_id` (connection close) |
+
+`session_id` groups every request on one keep-alive TCP connection.
+
+## Normalised event mapping
+
+| `type` | `event_type` |
+|---|---|
+| `connect` | `connect` |
+| `request` | `command` |
+| `login` | `login` |
+| `download` | `download` |
+| `session_end` | `session_end` |
+
+`payload` is `"<METHOD> <path>"` for requests/uploads. `protocol` is always
+`"http"`. `username`/`password` are non-null only on `login`; `sample_sha256` is
+non-null only on `download`. User-agent stays in the raw stream.
+
+## Gotchas
+
+### Build-only fragment — must not be the terminal component
+`fragment.sh` builds the image but does **not** run `docker compose up -d`. Order
+`http` ahead of a component whose fragment starts the stack (on `mysql-ssh`:
+`cowrie` → `http` → `mysql` → `metadata` → `malware-sender`, where mysql and the
+terminal addon both `up -d`). If `http` were the last component, the pot would be
+built but never started.
+
+### Capture only flows where the addons run
+Uploads land in `inbox/http/`, but canonicalisation + catalog submission require
+the `metadata` and `malware-sender` addons — currently only on `mysql-ssh`. On a
+server without them, samples accumulate unprocessed.
+
+### Co-tenant memory pressure
+On the 1 GB `mysql-ssh` Nanode (Cowrie 512M + MySQL 128M + capture-writer +
+Vector + addons), the 96M limit here is deliberately conservative. `MAX_UPLOAD`
+(default 3 MB) bounds per-request memory; the container restarts on OOM. Watch
+`free -m` after deploy; move to a dedicated VM if it's tight.
+
+### Accepts nothing / holds nobody
+Low-interaction by design — it won't hold a determined human, but it captures the
+overwhelmingly automated web-scan traffic cheaply. SNARE/TANNER or an LLM backend
+are the upgrade path in `docs/http-honeypot-plan.md` if realism proves
+insufficient.

@@ -1,0 +1,47 @@
+services:
+  http:
+    build:
+      context: ./http
+    container_name: http
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:80:80"
+    volumes:
+      - ./volumes/logs:/logs
+      - ../inbox/http:/samples
+    environment:
+      - HTTP_LOG_FILE=/logs/http.json
+      - SAMPLES_DIR=/samples
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 96M
+          cpus: '0.3'
+    networks:
+      - honeypot
+
+  vector:
+    image: timberio/vector:0.42.0-alpine
+    container_name: vector
+    restart: unless-stopped
+    user: root
+    command: ["--config", "/etc/vector/vector.toml"]
+    volumes:
+      - ./volumes/logs:/logs/http:ro
+      - /var/log:/hostlogs:ro
+      - ./vector/vector.toml:/etc/vector/vector.toml:ro
+      - vector-data:/vector-data
+    environment:
+      - LOKI_HOST=${LOKI_HOST}
+      - HOSTNAME=${HONEYPOT_HOSTNAME:-http-honeypot}
+    networks:
+      - honeypot
+
+volumes:
+  vector-data:
+
+networks:
+  honeypot:
+    driver: bridge
