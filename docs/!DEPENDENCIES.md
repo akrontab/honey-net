@@ -62,15 +62,19 @@ aws-eks-migration             (standalone "Maybe" — depends on nothing)
 
 ## Dependency table
 
-| Plan | VISION theme | Hard deps (blocked by) | Enables (blocks) | Soft / relates to |
-|---|---|---|---|---|
-| **normalized-schema-plan.md** | Detection & intel depth | — | operationalizing-intel (phase 1); http-honeypot (author into contract) | malware-catalog (download `meta` keys ↔ provenance) |
-| **operationalizing-intel-plan.md** | Operationalizing the intel | normalized-schema (phase 1) | — | malware-catalog (campaign L2/L3 selectors); incident-response (alerting ⇄, egress/breakout); Trust & audit secrets (forcing function) |
-| **http-honeypot-plan.md** | Detection & intel depth | — *(strongly: after normalized-schema)* | — | malware-catalog (feeds uploaded samples) |
-| **malware-catalog/PLAN.md** | Detection & intel depth (malware) | — *(mostly standalone)* | operationalizing-intel campaign features | http-honeypot (consumes its samples) |
-| **multi-operator-plan.md** | Reach & multi-operator | — | incident-response (delivers the rotatable anchor) | aws-eks-migration (per-provider break-glass) |
-| **incident-response-plan.md** | Trust & audit + Operational maturity | multi-operator (single rotatable anchor) | — | operationalizing-intel (alerting/self-healing); aws-eks (break-glass console) |
-| **aws-eks-migration.md** | Cloud portability | — | — | multi-operator (break-glass differs per provider). A "Maybe" — see plan's own recommendation against it on cost grounds. |
+**Status** values: `draft` (plan only) · `building` (partially shipped) · `built`
+(graduated and shipped; residual items noted) · `shelved` (deferred indefinitely).
+Update the status when a plan graduates to `BACKLOG.md` or ships.
+
+| Plan | Status | VISION theme | Hard deps (blocked by) | Enables (blocks) | Soft / relates to |
+|---|---|---|---|---|---|
+| **normalized-schema-plan.md** | `draft` · build-next (keystone) | Detection & intel depth | — | operationalizing-intel (phase 1); http-honeypot (author into contract) | malware-catalog (download `meta` keys ↔ provenance) |
+| **operationalizing-intel-plan.md** | `draft` · blocked on normalized-schema | Operationalizing the intel | normalized-schema (phase 1) | — | malware-catalog (campaign L2/L3 selectors); incident-response (alerting ⇄, egress/breakout); Trust & audit secrets (forcing function) |
+| **http-honeypot-plan.md** | `built` · phases 1–3 on `mysql-ssh`; :443 + dashboard outstanding | Detection & intel depth | — *(strongly: after normalized-schema)* | — | malware-catalog (feeds uploaded samples) |
+| **malware-catalog/PLAN.md** | `building` · see own `PLAN.md` | Detection & intel depth (malware) | — *(mostly standalone)* | operationalizing-intel campaign features | http-honeypot (consumes its samples) |
+| **multi-operator-plan.md** | `draft` · build-at-trigger (2nd operator joins) | Reach & multi-operator | — | incident-response (delivers the rotatable anchor) | aws-eks-migration (per-provider break-glass) |
+| **incident-response-plan.md** | `draft` · blocked on multi-operator | Trust & audit + Operational maturity | multi-operator (single rotatable anchor) | — | operationalizing-intel (alerting/self-healing); aws-eks (break-glass console) |
+| **aws-eks-migration.md** | `shelved` · "Maybe" (argues against itself) | Cloud portability | — | — | multi-operator (break-glass differs per provider). A "Maybe" — see plan's own recommendation against it on cost grounds. |
 
 ## Recommended build order
 
@@ -81,8 +85,11 @@ Respecting the hard edges, the near-term path is:
    should start first.
 2. **In parallel after (1):**
    - **`operationalizing-intel-plan.md`** — phase 1 (the schema slice) onward.
-   - **`http-honeypot-plan.md`** — authored against the generalized contract so it
-     auto-appears in cross-cutting dashboards/alerts.
+   - **`http-honeypot-plan.md`** — ⚠️ **already shipped ahead of (1)** (built on
+     `mysql-ssh`). It was meant to be authored *into* the generalized contract;
+     since normalized-schema landed after it, the HTTP pot will need retrofitting
+     when (1) is done — exactly the "hand-coded Cowrie-shaped" retrofit the keystone
+     was meant to avoid. Factor this into the normalized-schema work.
 3. **`malware-catalog/PLAN.md`** — independent; can advance anytime. Its Phase 1
    enrichment (family / IOCs / imphash) should land *before* operationalizing's
    campaign L2/L3, which consumes those selectors.

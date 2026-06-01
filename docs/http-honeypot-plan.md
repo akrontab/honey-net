@@ -5,8 +5,12 @@ add an HTTP honeypot package so the network captures web-layer attacks — the
 single largest source of opportunistic internet traffic the current pots
 (SSH/Telnet, MySQL, SMB, FTP) don't see.
 
-This is a *plan*, not yet buildable tasks. When the open questions below are
-settled, the "Graduation to BACKLOG" section becomes the checklist.
+> **Status: `built` (phases 1–3 shipped).** This plan has graduated and shipped.
+> The `honey-pots/http/` package is deployed as a co-tenant on `mysql-ssh`
+> (`honey-net.json`, port 80), both open questions are resolved (see below), and
+> phases 1–3 (minimal pot, normalization, sample capture) are live. **Outstanding:**
+> phase 4 (TLS :443) and phase 5 (Grafana dashboard) — see the checklist at the end.
+> Kept as the reference record for the package's design rationale.
 
 ## Why HTTP next
 
@@ -91,25 +95,31 @@ patterns are queryable; nothing is `abort`ed unless it's pure noise.
 - **Realism vs. budget.** Low-interaction won't hold a determined human, but it
   captures the overwhelmingly automated web-scan traffic cheaply. Start cheap;
   the engine table above is the upgrade path.
-- **Co-tenant or own VM?** Adding HTTP to an existing honeypot VM shares the 1 GB
-  Nanode (Cowrie + Vector already resident). A dedicated `http` server is cleaner
-  for blast-radius isolation but adds $5/mo. **Open question** — decide before
-  the `honey-net.json` entry.
-- **Which decoy app persona?** WordPress-ish, a generic admin panel, or a fake
-  internal tool? Persona shapes which scanners engage. **Open question.**
+- **Co-tenant or own VM?** ~~Open question.~~ **Resolved: co-tenant on `mysql-ssh`**
+  (shares the 1 GB Nanode with Cowrie + MySQL + Vector). Kept the $5/mo and
+  accepted the shared blast radius; revisit if traffic justifies a dedicated VM.
+- **Which decoy app persona?** ~~Open question.~~ **Resolved: a fake internal tool**
+  — the "Acme Internal Portal" landing + `/admin` sign-in, plus plausible responses
+  to common honeytoken probes (`.env`, `.git/config`, `/wp-login.php`).
 - **Upload abuse.** The pot will be offered as a file drop; cap size and rate in
   the app, and rely on `inbox/http` → `metadata` canonicalization so storage
   stays bounded.
 
-## Graduation to BACKLOG
+## Graduation to BACKLOG — shipped
 
-When the two open questions (own-VM vs co-tenant, decoy persona) are answered,
-promote to `BACKLOG.md` as the standard new-honeypot checklist from
+Both open questions are answered and the package shipped as a co-tenant on
+`mysql-ssh`. Status against the standard new-honeypot checklist from
 `honey-pots/CLAUDE.md`:
 
-- [ ] `honey-pots/http/` package (compose, Dockerfile, app, vector.toml, fragment.sh, .env.example)
-- [ ] `CLAUDE.md` documenting the event mapping above
-- [ ] `test.py` smoke test
-- [ ] `honey-net.json` entry + SSH key pair (new VM) or add to an existing server's `honeypots`
-- [ ] Grafana dashboard
-- [ ] `python honey.py provision --server <name>`
+- [x] `honey-pots/http/` package (compose, Dockerfile, app, vector.toml, fragment.sh, .env.example)
+- [x] `CLAUDE.md` documenting the event mapping above
+- [x] `test.py` smoke test
+- [x] `honey-net.json` entry — added to `mysql-ssh` `honeypots` (port 80; co-tenant decision)
+- [ ] **Grafana dashboard** — outstanding (phase 5); no `http` dashboard under `log-stack/.../dashboards/` yet
+- [x] `python honey.py provision --server mysql-ssh`
+
+**Remaining work** (track in `BACKLOG.md` if/when prioritized):
+
+- [ ] Phase 4 — TLS on :443 (self-signed cert); add 443 to the `mysql-ssh` `ports`
+      and open it in `fragment.sh`. Currently port 80 only.
+- [ ] Phase 5 — Grafana dashboard: top paths, top user-agents, credential attempts, uploads.
