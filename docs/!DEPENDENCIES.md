@@ -84,7 +84,7 @@ Update the status when a plan graduates to `BACKLOG.md` or ships.
 
 | Plan | Status | VISION theme | Hard deps (blocked by) | Enables (blocks) | Soft / relates to |
 |---|---|---|---|---|---|
-| **normalized-schema-plan.md** | `draft` · build-next (keystone) | Detection & intel depth | — | operationalizing-intel (phase 1); http-honeypot (author into contract) | malware-catalog (download `meta` keys ↔ provenance) |
+| **normalized-schema-plan.md** | `building` · phases 1–2 shipped (`meta_*` contract live); residual phases outstanding | Detection & intel depth | — | operationalizing-intel (phase 1); http-honeypot (author into contract) | malware-catalog (download `meta` keys ↔ provenance) |
 | **operationalizing-intel-plan.md** | `draft` · blocked on normalized-schema | Operationalizing the intel | normalized-schema (phase 1) | — | malware-catalog (campaign L2/L3 selectors); dashboard-overhaul (owns rendering ⇄); incident-response (alerting ⇄, egress/breakout); Trust & audit secrets (forcing function) |
 | **dashboard-overhaul-plan.md** | `draft` · contract ready, build-next candidate | Operationalizing the intel | normalized-schema (the `meta_*` contract) | — | operationalizing-intel (rendering ⇄ for pivot/replay/alert-state); alerting (P1 detection dashboard → Triage); malware-catalog (malware deep-dive) |
 | **alerting-plan.md** | `draft` · Phase 1 build-ready | Operationalizing the intel | — *(soft: normalized-schema for `meta_*`)* | — | operationalizing-intel (campaign-novelty needs correlation; digest sink); dashboard-overhaul (detection dashboard → Triage); malware-catalog (novelty registry / family); incident-response (security-model / egress gap) |
