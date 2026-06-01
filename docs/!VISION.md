@@ -138,3 +138,37 @@ affordable.
 *Pointers.* Centers on the control plane (`honey.py`, `scripts/`, `lib/`) and the
 self-describing package model (`docs/!DESIGN.md`). Host/network failure modes and
 the response playbook are worked in `docs/incident-response-plan.md`.
+
+### Maintenance & code health
+
+*Direction.* Keep the system honest with itself as it grows: pay down technical
+debt before it compounds, catch documentation drift the moment code moves
+underneath it, triage incoming defects so real bugs don't get lost in the noise,
+and hold a verification-and-testing discipline that proves a change works — both
+the per-package `test.py` checks and manual verification of a live deploy —
+before it's called done. This is the steady-state hygiene loop that runs
+*underneath* every other theme, not a one-time cleanup.
+
+*Why.* Every contract in `CLAUDE.md` — single source of truth in
+`honey-net.json`, self-describing packages, the hardcoded filesystem paths, the
+two Loki streams — is only true as long as the code and the docs still agree.
+Doc staleness is uniquely corrosive here because the `CLAUDE.md` files are
+load-bearing: they're read as ground truth by operators *and* by Claude, so a
+stale doc doesn't just mislead, it actively steers future work wrong. Untriaged
+bugs and untested changes erode the same trust the security model depends on — a
+honeypot that silently stops logging is worse than one that's down. Debt already
+has a named example: the HTTP pot shipped ahead of the normalized-schema keystone
+and now needs a Cowrie-shaped retrofit (see `docs/!DEPENDENCIES.md`), exactly the
+kind of shortcut this theme exists to keep visible and scheduled.
+
+*Pointers.* Distinct from *Operational maturity*, which owns the CI
+*infrastructure* and the running-system health (provisioning checks, cost,
+control-plane observability); this theme owns the *content* that flows through it
+— the debt backlog, the test coverage, the doc-vs-code accuracy, and the triage
+discipline itself. `BACKLOG.md` is the intake for graduated defects and debt
+(e.g. the queued "remove honeypot-specific references from the README"); the
+existing `honey-pots/*/test.py`, `scripts/test_*.py`, and `log-stack/test_loki.py`
+are the verification surface to grow and wire into CI when *Operational maturity*
+stands one up. No plan file yet — this graduates to one (and into
+`docs/!DEPENDENCIES.md`) when the debt warrants a real design rather than
+case-by-case paydown.
