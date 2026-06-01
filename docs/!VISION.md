@@ -112,12 +112,14 @@ from (abuse.ch, MalwareBazaar).
 what you didn't. A sensor network that only collects is half a system — the value
 is realized when the intel drives a notification, a block, or a contribution back.
 
-*Pointers.* Worked in `docs/operationalizing-intel-plan.md` — alerting
-(detect-distributed / notify-central), the campaign maturity ladder, and the
-schema promotion that unblocks both. The **visualization surface** (the dashboard
-overhaul onto the normalized contract — workflow tiers + per-protocol deep-dives)
-is its own plan, `docs/dashboard-overhaul-plan.md`, which owns everything that
-renders. Both sit on the normalized `{job="events"}` stream and the Grafana/Loki
+*Pointers.* This theme has graduated into focused, atomic plans:
+`docs/operationalizing-intel-plan.md` keeps the campaign maturity ladder, digests,
+outbound publishing, and the provenance join; **alerting** (detection rules → a
+PoC dashboard → custom notification services for novel attacks and campaigns) is
+its own plan, `docs/alerting-plan.md`; and the **visualization surface** (the
+dashboard overhaul onto the normalized contract — workflow tiers + per-protocol
+deep-dives) is `docs/dashboard-overhaul-plan.md`, which owns everything that
+renders. All sit on the normalized `{job="events"}` stream and the Grafana/Loki
 stack (`log-stack/`). Outbound sharing pairs with the export work under
 *Detection & intel depth*.
 

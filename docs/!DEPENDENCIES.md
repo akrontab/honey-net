@@ -37,6 +37,7 @@ normalized-schema-plan        (keystone — depends on nothing)
 
 operationalizing-intel-plan
   requires → normalized-schema        (hard: phase 1 prerequisite)
+  enables  → alerting                 (soft: campaign correlation defines campaign-novelty rule)
   uses     → malware-catalog          (soft: campaign selectors — family/IOCs/imphash)
   pairs    ↔ dashboard-overhaul       (soft: this owns actions, that owns rendering — pivot/replay/alert-state seam)
   pairs    ↔ incident-response        (soft: alerting, egress/breakout)
@@ -44,7 +45,15 @@ operationalizing-intel-plan
 dashboard-overhaul-plan       (operationalizing theme — the visualization surface)
   requires → normalized-schema        (hard: consumes the meta_* contract)
   pairs    ↔ operationalizing-intel   (soft: owns rendering for its pivot/replay/alert-state)
+  pairs    ↔ alerting                 (soft: P1 detection dashboard folds into the Triage tier)
   uses     → malware-catalog          (soft: malware deep-dive)
+
+alerting-plan                 (operationalizing theme — graduated out of operationalizing-intel)
+  requires → normalized-schema        (soft: rules read meta_*; HASSH novelty blocked on Q5)
+  uses     → malware-catalog          (soft: new_sample free; first-seen registry; family novelty)
+  pairs    ↔ operationalizing-intel   (soft: campaign-novelty needs its correlation; digest = digest-tier sink)
+  pairs    ↔ dashboard-overhaul       (soft: P1 detection dashboard → Triage tier)
+  pairs    ↔ incident-response        (soft: security-model violations / honeypot-egress capture gap)
 
 http-honeypot-plan
   after    → normalized-schema        (recommended: built into the generalized contract)
@@ -77,7 +86,8 @@ Update the status when a plan graduates to `BACKLOG.md` or ships.
 |---|---|---|---|---|---|
 | **normalized-schema-plan.md** | `draft` · build-next (keystone) | Detection & intel depth | — | operationalizing-intel (phase 1); http-honeypot (author into contract) | malware-catalog (download `meta` keys ↔ provenance) |
 | **operationalizing-intel-plan.md** | `draft` · blocked on normalized-schema | Operationalizing the intel | normalized-schema (phase 1) | — | malware-catalog (campaign L2/L3 selectors); dashboard-overhaul (owns rendering ⇄); incident-response (alerting ⇄, egress/breakout); Trust & audit secrets (forcing function) |
-| **dashboard-overhaul-plan.md** | `draft` · contract ready, build-next candidate | Operationalizing the intel | normalized-schema (the `meta_*` contract) | — | operationalizing-intel (rendering ⇄ for pivot/replay/alert-state); malware-catalog (malware deep-dive) |
+| **dashboard-overhaul-plan.md** | `draft` · contract ready, build-next candidate | Operationalizing the intel | normalized-schema (the `meta_*` contract) | — | operationalizing-intel (rendering ⇄ for pivot/replay/alert-state); alerting (P1 detection dashboard → Triage); malware-catalog (malware deep-dive) |
+| **alerting-plan.md** | `draft` · Phase 1 build-ready | Operationalizing the intel | — *(soft: normalized-schema for `meta_*`)* | — | operationalizing-intel (campaign-novelty needs correlation; digest sink); dashboard-overhaul (detection dashboard → Triage); malware-catalog (novelty registry / family); incident-response (security-model / egress gap) |
 | **http-honeypot-plan.md** | `built` · phases 1–3 on `mysql-ssh`; :443 + dashboard outstanding | Detection & intel depth | — *(strongly: after normalized-schema)* | — | malware-catalog (feeds uploaded samples) |
 | **malware-catalog/PLAN.md** | `building` · see own `PLAN.md` | Detection & intel depth (malware) | — *(mostly standalone)* | operationalizing-intel campaign features | http-honeypot (consumes its samples) |
 | **multi-operator-plan.md** | `draft` · build-at-trigger (2nd operator joins) | Reach & multi-operator | — | incident-response (delivers the rotatable anchor) | aws-eks-migration (per-provider break-glass) |
@@ -102,13 +112,18 @@ Respecting the hard edges, the near-term path is:
      since normalized-schema landed after it, the HTTP pot will need retrofitting
      when (1) is done — exactly the "hand-coded Cowrie-shaped" retrofit the keystone
      was meant to avoid. Factor this into the normalized-schema work.
-3. **`malware-catalog/PLAN.md`** — independent; can advance anytime. Its Phase 1
+3. **`alerting-plan.md`** — **Phase 1 is build-ready now** (needs only
+   `{job="events"}` + the catalog audit). The detection + PoC-dashboard phase has no
+   hard blockers and proves the rules before any notification work; a strong
+   parallel track. Selector-novelty rides the catalog; campaign-novelty waits on
+   operationalizing correlation.
+4. **`malware-catalog/PLAN.md`** — independent; can advance anytime. Its Phase 1
    enrichment (family / IOCs / imphash) should land *before* operationalizing's
    campaign L2/L3, which consumes those selectors.
-4. **`multi-operator-plan.md` → `incident-response-plan.md`** — gated by the
+5. **`multi-operator-plan.md` → `incident-response-plan.md`** — gated by the
    multi-operator build trigger (a second operator actually joins). The anchor it
    delivers is a precondition for the incident-response rotation runbook.
-5. **`aws-eks-migration.md`** — conditional. Only if honey-net becomes a
+6. **`aws-eks-migration.md`** — conditional. Only if honey-net becomes a
    multi-region research platform; the plan itself argues against it for a
    small fleet.
 
@@ -116,12 +131,13 @@ Respecting the hard edges, the near-term path is:
 
 Some concerns recur across plans and have no dedicated plan file yet:
 
-- **Secrets management** (Trust & audit theme) — first forced by
-  operationalizing-intel's outbound write credentials (alert webhook, ThreatFox /
-  MalwareBazaar keys). May graduate to its own plan when that work starts.
+- **Secrets management** (Trust & audit theme) — first forced by outbound write
+  credentials: alerting's notification-channel tokens (Telegram/Discord) and
+  operationalizing-intel's publishing keys (ThreatFox / MalwareBazaar). May graduate
+  to its own plan when that work starts.
 - **Self-describing package model** (`docs/!DESIGN.md`) — the invariant that
   normalized-schema, http-honeypot, and malware-catalog all build on; new pots
   add no control-plane changes.
-- **Alerting** — surfaces as an open question in incident-response *and* as a core
-  direction in operationalizing-intel; build it once, in operationalizing, and let
-  incident-response consume it.
+- **Alerting** — **now its own plan**, `docs/alerting-plan.md` (graduated out of
+  operationalizing-intel). Build it once there; incident-response and the dashboard
+  Triage tier consume it.

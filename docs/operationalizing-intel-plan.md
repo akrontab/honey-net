@@ -12,12 +12,23 @@ is a no-regret move that unblocks almost everything else; the heavier analytics
 (campaign correlation, IP-novelty, outbound publishing) are explicitly
 **build-at-trigger** and must not be built ahead of real need.
 
-**Rendering lives elsewhere.** Everything in this plan that draws on a screen —
-the campaign **pivot dashboard** (L1), **event-timeline session replay**, and the
-**sensor-dark** surface — is owned and built by `docs/dashboard-overhaul-plan.md`
-(Hunt/Operate tiers). This plan keeps the non-visual actions: alert rules, the
-digest job, outbound publishing, and the catalog provenance join. The two dovetail
-at the render seam.
+**Two concerns have graduated into their own atomic plans** — this plan is now the
+campaign-analytics + publishing core:
+
+- **Alerting** → `docs/alerting-plan.md`. Detection rules (novel attacks /
+  security-model violations / novel campaigns), the detection dashboard, and
+  **custom notification services** (Telegram/Discord/callout — superseding §1's
+  "notification = Grafana unified alerting + one contact point" below). The **digest**
+  stays here and is the `digest`-severity sink for that plan's routing.
+- **Rendering** → `docs/dashboard-overhaul-plan.md`. Everything that draws on a
+  screen — the campaign **pivot dashboard** (L1), **event-timeline session replay**,
+  the **sensor-dark** surface — is owned and built there (Hunt/Operate tiers).
+
+This plan keeps: the campaign maturity ladder (L0–L3 correlation), the digest job,
+outbound publishing, and the catalog provenance join. The §1–§2 alerting design
+below is **retained as background** but is superseded by `alerting-plan.md` on the
+notification path; read it for the detection-source reasoning, not the Grafana
+notification mechanism.
 
 ## Scope & timing — plan, not a build order
 
