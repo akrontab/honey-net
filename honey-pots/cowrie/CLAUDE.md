@@ -60,5 +60,16 @@ Without `state_path = var/lib/cowrie` under `[honeypot]`, auth raises `NoOptionE
 ### Two-stage attack pattern
 Attackers often plant an SSH key then reconnect with that key for the payload. Adding planted keys to `cowrie/etc/authorized_keys` captures the stage-2 session.
 
+### Docker userland proxy rewrites src_ip to the bridge gateway
+When Docker publishes ports via the default `builtin` port driver, its userland proxy (`docker-proxy`) terminates the TCP connection and re-originates it from the Docker bridge gateway (`172.18.0.1`). Cowrie would log this gateway IP instead of the real attacker IP.
+
+`"userland-proxy": false` does NOT work in rootless Docker — rootlesskit's user network namespace lacks `/proc/sys/net/bridge/bridge-nf-call-iptables`, so Docker refuses to start without the proxy.
+
+**The fix** (in place): `network_mode: host` + `DOCKERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=pasta`.
+- `network_mode: host` puts Cowrie directly in rootlesskit's network namespace — no Docker bridge, no docker-proxy.
+- The `implicit` port driver (the automatic default when `net=pasta` — do NOT override it with `PORT_DRIVER=pasta`, which tries to exec pasta as a separate daemon and fails) auto-detects ports bound in rootlesskit's namespace and forwards them from the real host with the original source IP preserved.
+- Cowrie listens on 22/23 directly (`listen_endpoints = tcp:22:interface=0.0.0.0`).
+- `ports:` and `networks:` are omitted from docker-compose.yml (incompatible with `network_mode: host`); capture-writer and vector communicate via shared volumes only so this is fine.
+
 ### JSON log is redirected, twistd log is not
 `output_jsonlog.logfile = /cowrie-logs/cowrie.json` writes to the conventional `./volumes/logs/cowrie.json` so `get_logs.py` finds it without per-package config. The twistd application log stays at its default `./volumes/var/log/cowrie/cowrie.log` — nothing downstream consumes it.

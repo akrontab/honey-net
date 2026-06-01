@@ -122,6 +122,8 @@ mkdir -p /home/honey/.config/systemd/user/docker.service.d
 cat > /home/honey/.config/systemd/user/docker.service.d/pasta.conf <<'PASTAEOF'
 [Service]
 Environment=DOCKERD_ROOTLESS_ROOTLESSKIT_NET=pasta
+# Port driver intentionally left unset: dockerd-rootless.sh defaults to "implicit" when
+# net=pasta, which auto-detects ports bound in the namespace and preserves source IPs.
 PASTAEOF
 
 chown -R honey:honey /home/honey/.config

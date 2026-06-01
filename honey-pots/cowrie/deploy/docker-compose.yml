@@ -4,9 +4,12 @@ services:
       context: ./cowrie-ext
     container_name: cowrie
     restart: unless-stopped
-    ports:
-      - "0.0.0.0:22:2222"
-      - "0.0.0.0:23:2323"
+    # network_mode: host puts Cowrie directly in rootlesskit's network namespace.
+    # Combined with DOCKERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=pasta, pasta detects
+    # ports 22/23 bound here and forwards from the real host with src_ip preserved.
+    # ports: and networks: are incompatible with network_mode: host — not needed
+    # since capture-writer and vector communicate with Cowrie via shared volumes only.
+    network_mode: host
     volumes:
       - ./cowrie/etc:/cowrie/cowrie-git/etc
       - ./cowrie/honeyfs:/cowrie/cowrie-git/src/cowrie/data/honeyfs:ro
@@ -21,8 +24,6 @@ services:
         limits:
           memory: 512M
           cpus: '0.8'
-    networks:
-      - honeypot
 
   capture-writer:
     build:
