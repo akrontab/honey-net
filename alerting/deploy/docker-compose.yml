@@ -1,0 +1,51 @@
+services:
+  detector:
+    build:
+      context: ./detector
+    container_name: detector
+    restart: unless-stopped
+    volumes:
+      - ./volumes/detector:/logs
+      - ./operators.json:/config/operators.json:ro
+      - ./honey-net.json:/config/honey-net.json:ro
+    environment:
+      - LOKI_URL=http://${LOKI_HOST}:3100
+      - CATALOG_URL=${CATALOG_URL}
+      - POLL_SECS=60
+      - SENSOR_DARK_MINS=10
+      - BURST_THRESHOLD=50
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.2'
+    networks:
+      - alerting
+
+  vector:
+    image: timberio/vector:0.42.0-alpine
+    container_name: alerting-vector
+    restart: unless-stopped
+    command: ["--config", "/etc/vector/vector.toml"]
+    volumes:
+      - ./volumes/detector:/logs:ro
+      - ./vector/vector.toml:/etc/vector/vector.toml:ro
+      - vector-data:/vector-data
+    environment:
+      - LOKI_HOST=${LOKI_HOST}
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.1'
+    depends_on:
+      - detector
+    networks:
+      - alerting
+
+volumes:
+  vector-data:
+
+networks:
+  alerting:
+    driver: bridge

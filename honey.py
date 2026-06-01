@@ -108,6 +108,7 @@ COMMANDS = [
     ("test",        "test_honeypot",  "Run smoke tests for a honeypot from this machine",     None),
     ("ts-cleanup",  "ts_cleanup",     "Remove stale Tailscale nodes not in Terraform state",  None),
     ("teardown",    "teardown",       "Destroy VMs (terraform), clean Tailscale, clear state", None),
+    ("deploy-detector", "deploy_detector", "Deploy alerting detector to log-stack",            None),
 ]
 
 _CMD_MAP = {name: (module, desc, fn) for name, module, desc, fn in COMMANDS}
