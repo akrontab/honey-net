@@ -134,12 +134,24 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):  # silence stderr; we emit our own events
         pass
 
+    def _src_ip(self) -> str:
+        try:
+            xff = self.headers.get("X-Forwarded-For", "")
+            if xff:
+                return xff.split(",")[0].strip()
+            xri = self.headers.get("X-Real-IP", "")
+            if xri:
+                return xri.strip()
+        except AttributeError:
+            pass
+        return self.client_address[0]
+
     def _emit(self, etype, **extra):
         _write({
             "timestamp":  _ts(),
             "type":       etype,
             "protocol":   "http",
-            "src_host":   self.client_address[0],
+            "src_host":   self._src_ip(),
             "src_port":   self.client_address[1],
             "session_id": self.session_id,
             **extra,
@@ -255,7 +267,7 @@ class Handler(BaseHTTPRequestHandler):
             # Provenance sidecar consumed by the metadata addon.
             with open(dest + ".capture.json", "w", encoding="utf-8") as fh:
                 json.dump({
-                    "src_ip":      self.client_address[0],
+                    "src_ip":      self._src_ip(),
                     "url":         f"{self.headers.get('Host', '')}{path}",
                     "session_id":  self.session_id,
                     "captured_at": _ts(),
