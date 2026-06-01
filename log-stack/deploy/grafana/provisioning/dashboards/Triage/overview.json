@@ -1,0 +1,374 @@
+{
+  "title": "Triage / Overview",
+  "uid": "triage-overview",
+  "description": "Situational landing dashboard — what is happening right now across all honeypots, and is anything wrong. Cross-cutting on the {job=\"events\"} normalized contract only (no raw eventid). Replaces the legacy normalized-events board.",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {"from": "now-24h", "to": "now"},
+  "timepicker": {},
+  "refresh": "1m",
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "tags": ["triage", "events", "overview"],
+  "links": [],
+  "annotations": {"list": []},
+  "templating": {
+    "list": [
+      {
+        "name": "honeypot",
+        "label": "Honeypot",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "loki"},
+        "query": "label_values({job=\"events\"}, honeypot)",
+        "definition": "label_values({job=\"events\"}, honeypot)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {"selected": false, "text": "All", "value": "$__all"}
+      },
+      {
+        "name": "host",
+        "label": "Sensor host",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "loki"},
+        "query": "label_values({job=\"events\", honeypot=~\"$honeypot\"}, host)",
+        "definition": "label_values({job=\"events\", honeypot=~\"$honeypot\"}, host)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {"selected": false, "text": "All", "value": "$__all"}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Total Events",
+      "description": "All normalized events in range, scoped by the honeypot/host selectors",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "blue"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Unique Attackers",
+      "description": "Distinct source IPs seen in range",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "red"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "count(sum by (src_ip) (count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Login Attempts",
+      "description": "Authentication attempts across all protocols (event_type=login)",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "orange"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "orange", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json | event_type=\"login\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Downloads Captured",
+      "description": "Payload delivery events (event_type=download)",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "purple"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "purple", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json | event_type=\"download\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Events by Type over Time",
+      "description": "Stacked activity volume per event_type — shifts between connect/login/command/download trace progression through an attack",
+      "gridPos": {"h": 9, "w": 16, "x": 0, "y": 4},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {"group": "A", "mode": "normal"}
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"calcs": ["max"], "displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum by (event_type) (count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json [$__interval]))",
+        "legendFormat": "{{event_type}}",
+        "queryType": "range",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 6,
+      "type": "bargauge",
+      "title": "Events by Sensor",
+      "description": "Event share per honeypot — which surface is under heaviest attack. Honeypot is a stream label, so this counts every event type accurately.",
+      "gridPos": {"h": 9, "w": 8, "x": 16, "y": 4},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "showUnfilled": true
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum by (honeypot) (count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{honeypot}}",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 7,
+      "type": "bargauge",
+      "title": "Connections by Protocol",
+      "description": "Scoped to event_type=connect: protocol is only populated on the connect event in the current schema (carrying it onto every event is the deferred normalized-schema Q5 spike), so this counts new sessions per protocol rather than all events.",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 13},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "showUnfilled": true
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum by (protocol) (count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json | event_type=\"connect\" | protocol != \"\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{protocol}}",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Top Attacker IPs",
+      "description": "Most active source IPs in range",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 13},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Count"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(25, sum by (src_ip) (count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{src_ip}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"src_ip": "Source IP", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Top Usernames Attempted",
+      "description": "Most common login usernames in range — credential spray wordlists",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 13},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Count"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(25, sum by (username) (count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json | event_type=\"login\" | username != \"\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{username}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"username": "Username", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 10,
+      "type": "logs",
+      "title": "Current Alert State",
+      "description": "Detections fired by the alerting pipeline. Empty until alerting Phase 1 ships the {job=\"detections\"} stream (docs/alerting-plan.md); this slot is reserved for it per the dashboard-overhaul plan.",
+      "gridPos": {"h": 6, "w": 24, "x": 0, "y": 21},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "{job=\"detections\"} | json",
+        "queryType": "range",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 11,
+      "type": "logs",
+      "title": "Live Event Stream",
+      "description": "All normalized events in real time, scoped by the selectors",
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 27},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "{job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json",
+        "queryType": "range",
+        "refId": "A"
+      }]
+    }
+  ]
+}

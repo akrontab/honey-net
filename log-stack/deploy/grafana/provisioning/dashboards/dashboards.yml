@@ -7,4 +7,6 @@ providers:
     updateIntervalSeconds: 30
     options:
       path: /etc/grafana/provisioning/dashboards
-      foldersFromFilesStructure: false
+      # Tier subdirectories (Triage/, Operate/, ...) become Grafana folders;
+      # dashboards at the root stay in General until the phase-7 cutover.
+      foldersFromFilesStructure: true

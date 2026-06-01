@@ -1,0 +1,271 @@
+{
+  "title": "Operate / Fleet Health",
+  "uid": "operate-fleet-health",
+  "description": "Is the sensor fleet healthy? Keyed on (honeypot, host) over the {job=\"events\"} contract, so a new honeypot package appears here with zero edits and two hosts running the same honeypot are NOT merged. Note: a truly dark sensor emits no series, so absence shows as a per-sensor rate dropping to zero here — the actual sensor-dark page is an alerting-pipeline rule (docs/operationalizing-intel-plan.md / alerting), not a dashboard panel.",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {"from": "now-24h", "to": "now"},
+  "timepicker": {},
+  "refresh": "1m",
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "tags": ["operate", "fleet", "health"],
+  "links": [],
+  "annotations": {"list": []},
+  "templating": {
+    "list": [
+      {
+        "name": "honeypot",
+        "label": "Honeypot",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "loki"},
+        "query": "label_values({job=\"events\"}, honeypot)",
+        "definition": "label_values({job=\"events\"}, honeypot)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {"selected": false, "text": "All", "value": "$__all"}
+      },
+      {
+        "name": "host",
+        "label": "Sensor host",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "loki"},
+        "query": "label_values({job=\"events\", honeypot=~\"$honeypot\"}, host)",
+        "definition": "label_values({job=\"events\", honeypot=~\"$honeypot\"}, host)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {"selected": false, "text": "All", "value": "$__all"}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Reporting Sensors",
+      "description": "Distinct (honeypot, host) pairs that emitted at least one event in range",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "count(sum by (honeypot, host) (count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Total Events",
+      "description": "Normalized events across the selected fleet in range",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "blue"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Events Last 15m",
+      "description": "Recent activity across the selected fleet — a sustained 0 while sensors are expected up means the pipeline or the hosts are dark (cross-check the per-sensor rate below).",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "yellow", "value": null}, {"color": "green", "value": 1}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} [15m]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Honeypot Types Live",
+      "description": "Distinct honeypot packages reporting in range",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "purple"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "purple", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "count(sum by (honeypot) (count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Event Rate per Sensor",
+      "description": "Per (honeypot, host) event rate. A line dropping to and flatlining at zero is a sensor going dark — the dashboard view of absence (paging on it belongs to the alerting pipeline).",
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 4},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {"group": "A", "mode": "none"}
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"calcs": ["max", "lastNotNull"], "displayMode": "table", "placement": "right", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum by (honeypot, host) (count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} [$__interval]))",
+        "legendFormat": "{{honeypot}} @ {{host}}",
+        "queryType": "range",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Events per Sensor in Range",
+      "description": "Volume by (honeypot, host). A sensor you expect to see but that is missing here has been dark for the whole range.",
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 13},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Events"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum by (honeypot, host) (count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"honeypot": "Honeypot", "host": "Sensor host", "Value #A": "Events"}}}
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Event Type Mix per Sensor",
+      "description": "Stacked event_type rate across the selected fleet — a sensor that connects but never logs commands/downloads may be misconfigured.",
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 13},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {"group": "A", "mode": "normal"}
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"calcs": ["max"], "displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum by (event_type) (count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json [$__interval]))",
+        "legendFormat": "{{event_type}}",
+        "queryType": "range",
+        "refId": "A"
+      }]
+    }
+  ]
+}

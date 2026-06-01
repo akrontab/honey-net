@@ -4,8 +4,6 @@ Ideas and features to implement. Tell Claude "implement the next backlog item" t
 
 ## Pending
 
-- [ ] Dashboard overhaul — **Triage tier**: new situational **Overview** on `{job="events"}` (event volume by `event_type`/`protocol`/sensor, live activity feed, alert-state slot left for the alerting Phase 1 detection panel). Becomes the landing dashboard, replacing `normalized-events`. Provisioned under a `Triage` Grafana folder. See `docs/dashboard-overhaul-plan.md` (Q1=tier folders, Q3=fresh Overview — resolved).
-- [ ] Dashboard overhaul — **Operate tier**: Fleet/sensor health re-keyed on `(honeypot, host)` (fixes the two-host merge in `sensor-health`); Host security (from `host-security`); Pipeline/ingest health (Loki/Vector throughput, disk). Provisioned under an `Operate` folder. See `docs/dashboard-overhaul-plan.md`.
 - [ ] Nice to have later: multiple operators with thier own user accounts with sudo access for host management. Maintain keybased logins
 - [ ] Update README and remove references to specific honeypots in logs
 - [ ] HTTP honeypot phase 4 — TLS on :443 (self-signed cert). Add 443 to `mysql-ssh` `ports` in `honey-net.json`, open it in `honey-pots/http/deploy/setup/fragment.sh`, and serve TLS from the app. See `docs/http-honeypot-plan.md`.
@@ -17,6 +15,8 @@ Ideas and features to implement. Tell Claude "implement the next backlog item" t
 
 ## Done
 
+- [x] Dashboard overhaul — **Triage tier**: situational **Overview** on `{job="events"}` (`Triage/overview.json`, uid `triage-overview`), replaces `normalized-events` as the landing board; alert-state slot left for alerting Phase 1. Provisioning switched to tier folders. *Built + JSON-validated; live verification pending.* See `docs/dashboard-overhaul-plan.md`.
+- [x] Dashboard overhaul — **Operate tier**: Fleet health re-keyed on `(honeypot, host)`, Host security (templated on `host`), Pipeline/ingest health (`Operate/*.json`). *Built + JSON-validated; live verification pending.* See `docs/dashboard-overhaul-plan.md`.
 - [x] Backup and restore scripts for logs, inbox, and malware catalog (`scripts/backup.py`, `scripts/restore.py`)
 - [x] Create dashboard for normalized logs
   - [x] Refactor the campaign dashboard (download panels now use `{job="events"}`, covers all honeypots)

@@ -157,8 +157,8 @@ The Triage + Operate tiers can graduate as soon as Q1/Q3 are answered; the Hunt
 analytical pieces coordinate with `operationalizing-intel`; the Q5-blocked items
 wait on that spike.
 
-- [ ] Triage / Overview dashboard on `{job="events"}` (replaces `normalized-events`)
-- [ ] Operate / Fleet health re-keyed on `(honeypot, host)`; Host security; Pipeline health
+- [x] Triage / Overview dashboard on `{job="events"}` (replaces `normalized-events`) — `Triage/overview.json` (uid `triage-overview`); provisioning switched to `foldersFromFilesStructure: true` so tier subdirs become Grafana folders. *Built + JSON-validated; pending live verification against Loki.*
+- [x] Operate / Fleet health re-keyed on `(honeypot, host)`; Host security; Pipeline health — `Operate/{fleet-health,host-security,pipeline-health}.json`. Sensor-dark shown as per-sensor rate-to-zero (paging is an alerting rule, not a panel); pipeline disk/Loki-internal metrics flagged as needing Prometheus. *Built + JSON-validated; pending live verification.*
 - [ ] Hunt / Credential intel + Download & infra intel on `meta_*`
 - [ ] Hunt / Campaign pivot + event-timeline session replay (with `operationalizing-intel`)
 - [ ] Per-protocol deep-dives (Cowrie, MySQL, Dionaea, HTTP) + drill-down data links
