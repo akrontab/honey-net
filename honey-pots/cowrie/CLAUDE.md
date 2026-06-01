@@ -27,7 +27,21 @@ Shipped to Loki as `{job="cowrie"}` (raw) and `{job="events", honeypot="cowrie"}
 | `cowrie.session.closed` | `session_end` |
 | (other) | dropped |
 
-Login success vs. failure is intentionally collapsed — query the raw stream for that distinction. `payload` carries `input` (commands) or `url` (downloads). `protocol` is only populated on `cowrie.session.connect`; downstream events carry `null` and must be joined on `session_id` to recover protocol.
+`payload` carries the command `input` only. On `download` events `payload` is `null` and the URL lives in `meta.url`. `protocol` is only populated on `cowrie.session.connect`; downstream events carry `null` and must be joined on `session_id` to recover protocol (see normalized-schema-plan.md Q5 — deferred).
+
+### Standard `meta` keys emitted
+
+Vocabulary defined in `honey-pots/CLAUDE.md`. Cowrie's `remap` derives:
+
+| `event_type` | `meta` key | Derived from |
+|---|---|---|
+| `login` | `login_success` | `eventid == "cowrie.login.success"` (true/false) |
+| `command` | `command_success` | `eventid == "cowrie.command.input"` (vs `.failed`) |
+| `download` | `url` | `raw.url` |
+| `download` | `dl_host` | host of `raw.url` (`parse_url`) |
+| `download` | `dl_filename` | last path segment of `raw.url` |
+
+**Deferred (Q5):** `client_fingerprint` (HASSH) and `client_version` arrive on separate eventids (`cowrie.client.kex`, `cowrie.client.version`) the remap currently drops, so they need session correlation before they can be attached to the `connect` event. Not yet emitted.
 
 ## Gotchas
 

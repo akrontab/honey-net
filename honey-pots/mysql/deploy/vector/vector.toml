@@ -38,6 +38,15 @@ event_type_map = {
 event_type, _ = get(event_type_map, [string!(raw.event)])
 if event_type == null { abort }
 
+# Standard meta vocabulary — see honey-pots/CLAUDE.md.
+meta = {}
+if event_type == "login" {
+  # The MySQL honeypot accepts every login (always-accept decoy).
+  meta.login_success = true
+  meta.auth_method = "native_password"
+}
+if raw.database != null { meta.database = raw.database }
+
 . = {
   "timestamp":     raw.timestamp,
   "honeypot":      "mysql",
@@ -50,6 +59,7 @@ if event_type == null { abort }
   "password":      null,
   "payload":       raw.query,
   "sample_sha256": null,
+  "meta":          meta,
 }
 '''
 

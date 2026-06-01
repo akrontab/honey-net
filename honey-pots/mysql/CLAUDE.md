@@ -43,7 +43,7 @@ All events include `conn_id` (8-char hex UUID) grouping every event from one TCP
 |---|---|
 | `connect` | conn_id, src_ip, src_port |
 | `login` | conn_id, username, database |
-| `query` | conn_id, username, query (full SQL) |
+| `query` | conn_id, username, query (full SQL), database |
 | `use_db` | conn_id, username, database |
 | `change_user` | conn_id, username |
 | `command` | conn_id, cmd (byte), arg (raw) |
@@ -63,6 +63,18 @@ All events include `conn_id` (8-char hex UUID) grouping every event from one TCP
 | (other) | dropped |
 
 `username` and `query` (→ `payload`) are forwarded. `password` is always `null` — `mysql_native_password` uses challenge-response so the plaintext password is never sent. `protocol` is always `"mysql"`. `sample_sha256` is `null`.
+
+### Standard `meta` keys emitted
+
+Vocabulary defined in `honey-pots/CLAUDE.md`. Because MySQL is a built-locally pot, `meta` is minted at the source where cleanest (`logger.py`/`protocol.py`) and the `remap` forwards it:
+
+| `event_type` | `meta` key | Source |
+|---|---|---|
+| `login` | `login_success` | always `true` — the honeypot accepts every login |
+| `login` | `auth_method` | always `"native_password"` |
+| `query` (and `login`/`session_end`) | `database` | `raw.database` — `current_db` at event time |
+
+The `query` event now carries `database` (added in `protocol.py`), so the active DB is queryable per statement, not just at login.
 
 ## Gotchas
 

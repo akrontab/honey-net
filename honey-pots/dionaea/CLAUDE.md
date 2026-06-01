@@ -49,7 +49,17 @@ Shipped to Loki as `{job="dionaea"}` (raw) and `{job="events", honeypot="dionaea
 | `credentials` | `login` |
 | `download` | `download` |
 
-`login`/`password` → `username`/`password`. `url` → `payload` on downloads. `sample_sha256` is **null** (dionaea reports md5/sha512 but not sha256 — pivot via the canonical sidecar at `/opt/<server>/inbox/<sha256>.meta.json`). `session_id` is null (dionaea has no per-connection ID).
+`login`/`password` → `username`/`password`. On downloads `payload` is `null` and the URL lives in `meta.url`. `sample_sha256` is **null** (dionaea reports md5/sha512 but not sha256 — pivot via the canonical sidecar at `/opt/<server>/inbox/<sha256>.meta.json`). `session_id` is null (dionaea has no per-connection ID).
+
+### Standard `meta` keys emitted
+
+Vocabulary defined in `honey-pots/CLAUDE.md`. Dionaea's `remap` derives, on `download` events:
+
+| `meta` key | Derived from |
+|---|---|
+| `url` | `raw.url` |
+| `dl_host` | host of `raw.url` (`parse_url`; skipped if the URL isn't parseable, e.g. SMB paths) |
+| `dl_filename` | last path segment of `raw.url` |
 
 ## Provenance limitation
 

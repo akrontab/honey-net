@@ -28,13 +28,15 @@ Each honeypot's compose file is included into a generated top-level compose by `
 
 ## vector/vector.toml — normalized event schema
 
-Each honeypot's Vector includes a `remap` transform that emits a parallel `{job="events", honeypot=<name>}` stream alongside the raw `{job="<honeypot>"}` stream. The unified schema:
+Each honeypot's Vector includes a `remap` transform that emits a parallel `{job="events", honeypot=<name>}` stream alongside the raw `{job="<honeypot>"}` stream. The schema is a **contract**: a new honeypot that fills the core + the standard `meta` keys for its capabilities appears in every cross-cutting dashboard, alert, and the campaign tooling with **zero dashboard edits**. The design is a lean flat **core** (universal, stable) plus a governed nested **`meta`** object each pot owns. See `docs/normalized-schema-plan.md` for the rationale.
+
+### Core (the universal contract)
 
 ```json
 {
   "timestamp":     "ISO-8601 UTC",
   "honeypot":      "<package name>",
-  "protocol":      "ssh|telnet|mysql|smb|ftp|...",
+  "protocol":      "ssh|telnet|mysql|smb|ftp|http|...",
   "src_ip":        "1.2.3.4",
   "src_port":      54321,
   "session_id":    "...",
@@ -42,13 +44,48 @@ Each honeypot's Vector includes a `remap` transform that emits a parallel `{job=
   "username":      "root",
   "password":      "...",
   "payload":       "...",
-  "sample_sha256": "..."
+  "sample_sha256": "...",
+  "meta":          { /* governed vocabulary — see below */ }
 }
 ```
 
-All fields except `timestamp`, `honeypot`, `src_ip`, and `event_type` may be `null`. Events whose source `eventid`/`type` doesn't map to a known `event_type` are dropped via `abort`.
+All fields except `timestamp`, `honeypot`, `src_ip`, and `event_type` may be `null`. Core fields are **stable** — existing queries and dashboards on them keep working; do not repurpose a core field's meaning. Events whose source `eventid`/`type` doesn't map to a known `event_type` are dropped via `abort`.
 
-The Loki job label (`labels.job`) is what LogQL queries filter on — use a short lowercase name matching the package name. Every honeypot also ships `auth.log` and `syslog` from `/hostlogs` to `{job="auth"}` / `{job="syslog"}`.
+- `payload` is the **command/query input** (`command`/`query` events). On `download` events the fetch URL lives in `meta.url`, **not** `payload` — `payload` is `null` on downloads.
+
+The Loki job label (`labels.job`) is what LogQL queries filter on — use a short lowercase name matching the package name. Loki flattens `meta` on `_`, so it reads naturally: `{job="events"} | json | meta_login_success="true"`. Every honeypot also ships `auth.log` and `syslog` from `/hostlogs` to `{job="auth"}` / `{job="syslog"}`.
+
+### `meta` — governed vocabulary, not a free bag
+
+`meta` carries richness the lean core leaves out. It has **two tiers**, and the distinction is load-bearing:
+
+- **Standard capability keys** — the concept-named vocabulary in the table below. A pot with that capability **must** emit the standard key, spelled exactly, so cross-cutting panels match every pot at once. The names are the cross-protocol *concept* (`client_fingerprint`), never a protocol mechanism (`hassh`); each pot maps its mechanism into the concept.
+- **Pot-private keys** — genuinely unique fields only that pot's own (per-protocol) dashboards read, e.g. Cowrie `arch` or a ttylog reference. Namespace freely; they are not part of the contract.
+
+The contract lives as **N copy-pasted `remap` transforms** (one per pot, no shared VRL include today), so the single thing preventing silent key drift is this table. Spell standard keys from it verbatim. (A lint/test that asserts each pot emits its declared standard keys is deferred until a third pot's `meta` lands — see plan Q1.)
+
+#### Standard `meta` keys (by capability)
+
+| `event_type` | `meta` key | Concept | Cowrie | MySQL | Dionaea | HTTP |
+|---|---|---|---|---|---|---|
+| `login` | `login_success` | auth outcome (`true`/`false`) | `success`/`failed` eventid | always-accept → `true` | n/a | form / basic result |
+| `login` | `auth_method` | how they authed | `password` / `pubkey` | `native_password` | — | `basic` / `form` |
+| `connect` | `client_fingerprint` | client identity (value) | HASSH | — | — | JA3 / JA4 |
+| `connect` | `fingerprint_type` | which algorithm produced it | `hassh` | — | — | `ja3` / `ja4` |
+| `connect` | `client_version` | client banner | `cowrie.client.version` | — | — | User-Agent |
+| `download` | `url` | fetch URL (also the `payload` slot's old home) | `raw.url` | — | `raw.url` | upload origin |
+| `download` | `dl_host` | staging infra (host of `url`) | derived | — | derived | — |
+| `download` | `dl_filename` | payload name | derived | — | derived | upload name |
+| `command` | `command_success` | did it run (`true`/`false`) | `input` / `failed` eventid | — | — | — |
+| `query` | `database` | target DB | — | `raw.database` | — | — |
+
+`client_fingerprint` is **one field plus a `fingerprint_type` discriminator** (not separate `hassh`/`ja3` keys) so a cross-pot fingerprint query matches one key and a new algorithm slots in without a schema change.
+
+### The hard rule (keeps it from re-coupling)
+
+**Cross-cutting dashboards and alerts query `{job="events"}` only.** Anything reaching into `{job="<pot>"} | eventid=...` belongs in a **per-protocol** dashboard (`cowrie-overview`, `mysql-overview`). Per-protocol dashboards staying on the raw stream is correct — that is their job. A panel titled "across all honeypots" that unions raw per-pot paths is the anti-pattern this contract exists to remove.
+
+Per-honeypot `CLAUDE.md` documents that pot's own `meta` mapping (which standard keys it emits and how it derives each).
 
 ## setup/fragment.sh
 
@@ -90,7 +127,7 @@ Fragment responsibilities:
 ## Checklist for a new honeypot
 
 - [ ] `deploy/docker-compose.yml` (+ `../inbox/<name>:/samples` mount if it captures binaries)
-- [ ] `deploy/vector/vector.toml` (sources + normalising transform + sinks)
+- [ ] `deploy/vector/vector.toml` (sources + normalising transform + sinks) — emit the standard `meta` keys for each capability the pot has (see the `meta` table above)
 - [ ] `deploy/.env.example`
 - [ ] `deploy/setup/fragment.sh`
 - [ ] `CLAUDE.md` (protocol, log paths, event mapping, gotchas)

@@ -130,7 +130,7 @@ class MySQLHoneypot(asyncio.Protocol):
 
         elif cmd == 0x03:  # COM_QUERY
             self._queries.append(arg)
-            log_event("query", self.peer, conn_id=self.conn_id, username=self.username, query=arg)
+            log_event("query", self.peer, conn_id=self.conn_id, username=self.username, query=arg, database=self.query_handler.current_db)
             self.transport.write(self.query_handler.handle(arg, resp_seq))
 
         elif cmd == 0x04:  # COM_FIELD_LIST

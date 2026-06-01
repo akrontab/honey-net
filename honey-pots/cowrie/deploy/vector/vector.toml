@@ -38,11 +38,38 @@ event_type_map = {
   "cowrie.session.closed":        "session_end",
 }
 
-event_type, _ = get(event_type_map, [string!(raw.eventid)])
+eventid = string!(raw.eventid)
+event_type, _ = get(event_type_map, [eventid])
 if event_type == null { abort }
 
-payload = raw.input
-if event_type == "download" { payload = raw.url }
+# payload carries command input only; on downloads the URL lives in meta.url
+payload = null
+if event_type == "command" { payload = raw.input }
+
+# Standard meta vocabulary — see honey-pots/CLAUDE.md.
+# Deferred (normalized-schema-plan.md Q5): client_fingerprint / client_version /
+# protocol-on-every-event arrive on separate eventids and need session
+# correlation, so they are not set here.
+meta = {}
+if event_type == "login" {
+  meta.login_success = eventid == "cowrie.login.success"
+}
+if event_type == "command" {
+  meta.command_success = eventid == "cowrie.command.input"
+}
+if event_type == "download" {
+  url, url_err = string(raw.url)
+  if url_err == null {
+    meta.url = url
+    parsed, perr = parse_url(url)
+    if perr == null {
+      meta.dl_host = parsed.host
+      segs = split(string!(parsed.path), "/")
+      fn = segs[-1]
+      if fn != null && fn != "" { meta.dl_filename = fn }
+    }
+  }
+}
 
 . = {
   "timestamp":     raw.timestamp,
@@ -56,6 +83,7 @@ if event_type == "download" { payload = raw.url }
   "password":      raw.password,
   "payload":       payload,
   "sample_sha256": raw.shasum,
+  "meta":          meta,
 }
 '''
 

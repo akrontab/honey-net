@@ -39,8 +39,24 @@ event_type_map = {
 event_type, _ = get(event_type_map, [string!(raw.type)])
 if event_type == null { abort }
 
+# payload stays null on downloads; the URL lives in meta.url (see honey-pots/CLAUDE.md)
 payload = null
-if event_type == "download" { payload = raw.url }
+
+# Standard meta vocabulary — see honey-pots/CLAUDE.md.
+meta = {}
+if event_type == "download" {
+  url, url_err = string(raw.url)
+  if url_err == null {
+    meta.url = url
+    parsed, perr = parse_url(url)
+    if perr == null {
+      meta.dl_host = parsed.host
+      segs = split(string!(parsed.path), "/")
+      fn = segs[-1]
+      if fn != null && fn != "" { meta.dl_filename = fn }
+    }
+  }
+}
 
 . = {
   "timestamp":     raw.timestamp,
@@ -54,6 +70,7 @@ if event_type == "download" { payload = raw.url }
   "password":      raw.password,
   "payload":       payload,
   "sample_sha256": null,
+  "meta":          meta,
 }
 '''
 
