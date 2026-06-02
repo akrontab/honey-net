@@ -1,0 +1,378 @@
+{
+  "title": "Hunt / Download & Infra Intel",
+  "uid": "hunt-download-infra",
+  "description": "Payload delivery and C2 infrastructure analysis on the {job=\"events\"} normalized contract. Consumes meta_dl_host, meta_dl_filename, and sample_sha256 directly — no regex extraction at read time. A new honeypot that emits download events appears here automatically.",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {"from": "now-7d", "to": "now"},
+  "timepicker": {},
+  "refresh": "5m",
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "tags": ["hunt", "events", "downloads", "infrastructure", "malware"],
+  "links": [],
+  "annotations": {"list": []},
+  "templating": {
+    "list": [
+      {
+        "name": "honeypot",
+        "label": "Honeypot",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "loki"},
+        "query": "label_values({job=\"events\"}, honeypot)",
+        "definition": "label_values({job=\"events\"}, honeypot)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {"selected": false, "text": "All", "value": "$__all"}
+      },
+      {
+        "name": "host",
+        "label": "Sensor host",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "loki"},
+        "query": "label_values({job=\"events\", honeypot=~\"$honeypot\"}, host)",
+        "definition": "label_values({job=\"events\", honeypot=~\"$honeypot\"}, host)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {"selected": false, "text": "All", "value": "$__all"}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Downloads Captured",
+      "description": "Total payload delivery events in range",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "purple"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "purple", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json | event_type=\"download\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Unique Attacker IPs",
+      "description": "Distinct source IPs that triggered at least one download",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "red"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "count(sum by (src_ip) (count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json | event_type=\"download\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Unique Payload Hashes",
+      "description": "Distinct SHA-256 hashes captured — each is a unique binary",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "orange"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "orange", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "count(sum by (sample_sha256) (count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json | event_type=\"download\" | sample_sha256 != \"\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Unique Download Hosts",
+      "description": "Distinct C2 / staging infrastructure hosts seen in download URLs",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "blue"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "count(sum by (meta_dl_host) (count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json | event_type=\"download\" | meta_dl_host != \"\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Download Activity over Time",
+      "description": "Payload delivery rate — spikes indicate active dropper campaigns",
+      "gridPos": {"h": 9, "w": 16, "x": 0, "y": 4},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "purple"},
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {"group": "A", "mode": "none"}
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"calcs": ["max", "sum"], "displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "single", "sort": "none"}
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json | event_type=\"download\" [$__interval]))",
+        "legendFormat": "Downloads",
+        "queryType": "range",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 6,
+      "type": "bargauge",
+      "title": "Downloads by Honeypot",
+      "description": "Which sensors are receiving dropper commands",
+      "gridPos": {"h": 9, "w": 8, "x": 16, "y": 4},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "showUnfilled": true
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum by (honeypot) (count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json | event_type=\"download\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{honeypot}}",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Top Download Hosts — C2 Infrastructure",
+      "description": "Most-used staging / C2 hosts. Pivot on a host to see all IPs and payloads associated with it in the Campaign Pivot dashboard.",
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 13},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Count"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(25, sum by (meta_dl_host) (count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json | event_type=\"download\" | meta_dl_host != \"\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{meta_dl_host}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"meta_dl_host": "Download Host", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Top Download Filenames",
+      "description": "Most common payload filenames. Architecture suffixes (mips, arm7, x86) indicate multi-arch dropper campaigns.",
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 13},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Count"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(25, sum by (meta_dl_filename) (count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json | event_type=\"download\" | meta_dl_filename != \"\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{meta_dl_filename}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"meta_dl_filename": "Filename", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Top Downloading IPs",
+      "description": "Attackers that triggered the most download events. Copy an IP into Attacker Profile to see their full session.",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 23},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Count"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(25, sum by (src_ip) (count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json | event_type=\"download\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{src_ip}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"src_ip": "Source IP", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Top Payload Hashes",
+      "description": "Most-delivered SHA-256 hashes. Cross-reference with the malware catalog for YARA hits and AV verdicts.",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 23},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Count"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(25, sum by (sample_sha256) (count_over_time({job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json | event_type=\"download\" | sample_sha256 != \"\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{sample_sha256}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"sample_sha256": "SHA-256", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 11,
+      "type": "logs",
+      "title": "Recent Download Events",
+      "description": "Raw download events — shows URL, filename, hash, and source IP in full",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 31},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "{job=\"events\", honeypot=~\"$honeypot\", host=~\"$host\"} | json | event_type=\"download\"",
+        "queryType": "range",
+        "refId": "A"
+      }]
+    }
+  ]
+}
