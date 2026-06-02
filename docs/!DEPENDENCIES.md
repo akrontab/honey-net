@@ -65,14 +65,14 @@ malware-catalog/PLAN          (mostly standalone — depends on nothing)
 
 multi-operator-plan           (depends on nothing)
   enables  → incident-response        (hard: delivers the single rotatable anchor)
-  pairs    ↔ aws-eks-migration        (soft: per-provider break-glass)
+  pairs    ↔ aws-eks-migration-plan   (soft: per-provider break-glass)
 
 incident-response-plan
   requires → multi-operator           (hard: the single rotatable anchor)
   pairs    ↔ operationalizing-intel   (soft: alerting / self-healing)
-  pairs    ↔ aws-eks-migration        (soft: break-glass console differs per provider)
+  pairs    ↔ aws-eks-migration-plan   (soft: break-glass console differs per provider)
 
-aws-eks-migration             (standalone "Maybe" — depends on nothing)
+aws-eks-migration-plan        (standalone "Maybe" — depends on nothing)
   pairs    ↔ multi-operator           (soft: break-glass)
 ```
 
@@ -90,9 +90,9 @@ Update the status when a plan graduates to `BACKLOG.md` or ships.
 | **alerting-plan.md** | `building` · Phase 1 live (detector + `{job="detections"}` + Triage detection dashboard on log-stack); Phases 4–7 outstanding | Operationalizing the intel | — *(soft: normalized-schema for `meta_*`)* | — | operationalizing-intel (campaign-novelty needs correlation; digest sink); dashboard-overhaul (detection dashboard → Triage); malware-catalog (novelty registry / family); incident-response (security-model / egress gap) |
 | **http-honeypot-plan.md** | `built` · phases 1–3 on `mysql-ssh`; :443 + dashboard outstanding | Detection & intel depth | — *(strongly: after normalized-schema)* | — | malware-catalog (feeds uploaded samples) |
 | **malware-catalog/PLAN.md** | `building` · see own `PLAN.md` | Detection & intel depth (malware) | — *(mostly standalone)* | operationalizing-intel campaign features | http-honeypot (consumes its samples) |
-| **multi-operator-plan.md** | `draft` · build-at-trigger (2nd operator joins) | Reach & multi-operator | — | incident-response (delivers the rotatable anchor) | aws-eks-migration (per-provider break-glass) |
+| **multi-operator-plan.md** | `draft` · build-at-trigger (2nd operator joins) | Reach & multi-operator | — | incident-response (delivers the rotatable anchor) | aws-eks-migration-plan (per-provider break-glass) |
 | **incident-response-plan.md** | `draft` · blocked on multi-operator | Trust & audit + Operational maturity | multi-operator (single rotatable anchor) | — | operationalizing-intel (alerting/self-healing); aws-eks (break-glass console) |
-| **aws-eks-migration.md** | `shelved` · "Maybe" (argues against itself) | Cloud portability | — | — | multi-operator (break-glass differs per provider). A "Maybe" — see plan's own recommendation against it on cost grounds. |
+| **aws-eks-migration-plan.md** | `shelved` · "Maybe" (argues against itself) | Cloud portability | — | — | multi-operator (break-glass differs per provider). A "Maybe" — see plan's own recommendation against it on cost grounds. |
 
 ## Recommended build order
 
@@ -125,7 +125,7 @@ Respecting the hard edges, the near-term path is:
 5. **`multi-operator-plan.md` → `incident-response-plan.md`** — gated by the
    multi-operator build trigger (a second operator actually joins). The anchor it
    delivers is a precondition for the incident-response rotation runbook.
-6. **`aws-eks-migration.md`** — conditional. Only if honey-net becomes a
+6. **`aws-eks-migration-plan.md`** — conditional. Only if honey-net becomes a
    multi-region research platform; the plan itself argues against it for a
    small fleet.
 

@@ -64,7 +64,7 @@ Select **logs** to pull log files locally. Open Grafana at `http://<log-stack-ta
 > **Deeper reading in `docs/`:** [`!DESIGN.md`](docs/!DESIGN.md) explains the
 > package model and data flows; [`!VISION.md`](docs/!VISION.md) covers where the
 > project is headed; deep single-initiative plans (e.g.
-> [`aws-eks-migration.md`](docs/aws-eks-migration.md),
+> [`aws-eks-migration-plan.md`](docs/aws-eks-migration-plan.md),
 > [`http-honeypot-plan.md`](docs/http-honeypot-plan.md)) live there too.
 
 **Cheaper Than Starbucks™** — The full infrastructure runs on Linode Nanodes at $5/mo each. Services are chosen for low resource overhead so the whole network costs less than a coffee run.

@@ -78,6 +78,9 @@ The `query` event now carries `database` (added in `protocol.py`), so the active
 
 ## Gotchas
 
+### Log file never appears / Loki stream empty
+`fragment.sh` creates `volumes/logs/` after `setup.sh` has already run `chown -R honey:honey $DEPLOY_DIR`, so the directory ends up root-owned. The container (uid=0 → `honey` via rootless user namespace) can't write to it; `logger.py` swallows the `open()` error and falls back to stdout only. Fix on a live server: `chown honey:honey /opt/<server>/mysql/volumes/logs && docker restart mysql-honeypot`. The fragment now includes the `chown` — see `honey-pots/CLAUDE.md` fragment responsibilities.
+
 ### Never `docker compose up --build` on the combined stack
 The top-level compose can include multiple `build:` contexts (mysql-honeypot, malware-sender, cowrie's capture-writer). Concurrent BuildKit crashes dockerd: `"session healthcheck failed fatally: only one connection allowed"`. Build in sequence:
 ```bash

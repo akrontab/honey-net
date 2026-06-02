@@ -12,7 +12,7 @@ VISION.md  ──►  deep plan file   ──►  BACKLOG.md   ──►  DESIGN
 ```
 
 - A theme here graduates to its **own plan file** in this folder (the pattern
-  `docs/aws-eks-migration.md` set) once it's worth a real design.
+  `docs/aws-eks-migration-plan.md` set) once it's worth a real design.
 - A plan graduates to **`BACKLOG.md`** once it's decomposed into buildable steps.
 - Don't put dates or task checklists here — those belong downstream.
 - The dependencies *between* plan files are tracked in `docs/!DEPENDENCIES.md`.
@@ -82,7 +82,7 @@ the cheap-VM model that gives per-honeypot hypervisor isolation for free.
 or go down. It also keeps the project honest about the isolation trade-offs
 between VM-per-honeypot and shared-kernel orchestration.
 
-*Pointers.* The Kubernetes/AWS path is fully worked in `docs/aws-eks-migration.md`,
+*Pointers.* The Kubernetes/AWS path is fully worked in `docs/aws-eks-migration-plan.md`,
 including the isolation and cost trade-offs vs. the current Linode model.
 Multi-cloud Terraform sits under "Maybes" in `BACKLOG.md`.
 

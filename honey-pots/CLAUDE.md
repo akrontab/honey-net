@@ -103,7 +103,7 @@ Environment variables available:
 
 Fragment responsibilities:
 - **Open UFW ports** for the public-facing service.
-- **Create volume directories** (Docker assigns wrong ownership if you let it create them lazily).
+- **Create volume directories** (Docker assigns wrong ownership if you let it create them lazily). **Always `chown honey:honey` the directory immediately after `mkdir -p`** — `setup.sh` runs `chown -R honey:honey $DEPLOY_DIR` before fragments execute, so any directory a fragment creates afterward is root-owned. A root-owned log dir silently prevents the container from writing (the container's uid=0 maps to `honey` on the host via the rootless user namespace, appearing as `others` against a root-owned dir). Symptom: container logs fine to stdout, log file never appears, Loki stream stays empty.
 - **Create the per-honeypot inbox subdir** with `chmod 777` if it captures samples.
 - **Fix ownership** for non-root container UIDs (Cowrie is 999).
 - **Build locally-built images explicitly in sequence.** Never `docker compose up --build` — concurrent BuildKit crashes dockerd (see `mysql/CLAUDE.md`).

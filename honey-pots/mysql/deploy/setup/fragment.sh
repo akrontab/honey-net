@@ -9,6 +9,7 @@ ufw allow "3306/tcp" comment 'MySQL honeypot'
 # ── Create volume directories ─────────────────────────────────────────
 echo "[mysql] Creating volume directories..."
 mkdir -p "${DEPLOY_DIR}/mysql/volumes/logs"
+chown honey:honey "${DEPLOY_DIR}/mysql/volumes/logs"
 
 # ── Build mysql image and start combined stack ────────────────────────
 # Build explicitly before "up" so malware-sender and mysql-honeypot

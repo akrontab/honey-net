@@ -121,7 +121,7 @@ itself** is down — is the provider's out-of-band console, which is
 **provider-specific**: Linode LISH today, but AWS (EC2 Serial Console / SSM),
 Hetzner (web console), etc. all differ. The plan must treat break-glass as a
 per-provider capability, not assume LISH. This intersects the **Cloud portability**
-theme — see `docs/aws-eks-migration.md`.
+theme — see `docs/aws-eks-migration-plan.md`.
 
 Failure-mode handling (including the single-anchor rotation runbook this design
 enables) is worked separately in `docs/incident-response-plan.md`.
