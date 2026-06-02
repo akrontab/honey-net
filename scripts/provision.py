@@ -325,7 +325,7 @@ def _scp(pkg_dir, key, pub_ip, *, retries=6, delay=10):
 # ── Provision one server ──────────────────────────────────────────────────────
 
 def _provision(server, state, ts_api_key, *, grafana_password="",
-               loki_host="", catalog_url="", vt_api_key="",
+               loki_host="", catalog_url="", mb_api_key="", vt_api_key="",
                triage_api_key="", force=False):
     name   = server["name"]
     stype  = server["type"]
@@ -373,6 +373,7 @@ def _provision(server, state, ts_api_key, *, grafana_password="",
         if catalog_url and stype == "honeypot":
             env["CATALOG_URL"] = catalog_url
     if name == "malware-catalog":
+        env["MB_API_KEY"] = mb_api_key
         env["VT_API_KEY"] = vt_api_key
         env["TRIAGE_API_KEY"] = triage_api_key
     if stype == "honeypot":
@@ -464,6 +465,7 @@ def main():
 
     ts_api_key       = ""
     grafana_password = ""
+    mb_api_key       = ""
     vt_api_key       = ""
     triage_api_key   = ""
     if ordered:
@@ -475,6 +477,11 @@ def main():
                 sys.exit("Grafana admin password is required.")
         if any(s["name"] == "malware-catalog" for s in ordered):
             print("\n── malware-catalog enrichment keys (optional) ────────────────")
+            mb_api_key = _load_optional_key(
+                "MalwareBazaar API key",
+                ".honey-net-mb-apikey",
+                "bazaar.abuse.ch/",
+            )
             vt_api_key = _load_optional_key(
                 "VirusTotal API key",
                 ".honey-net-vt-apikey",
@@ -523,6 +530,7 @@ def main():
             grafana_password=grafana_password,
             loki_host=loki_host,
             catalog_url=catalog_url,
+            mb_api_key=mb_api_key,
             vt_api_key=vt_api_key,
             triage_api_key=triage_api_key,
             force=args.force,

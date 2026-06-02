@@ -239,11 +239,13 @@ tailscale ip -4
 
 The catalog runs three enrichment workers alongside the API. The first (`static-analyzer`: YARA, IOC extraction, ssdeep, PE/ELF parsing) needs no setup. The other two only run if you provide a key:
 
+**MalwareBazaar API key** *(optional, enables hash lookups + AV verdicts from abuse.ch)* — register at [bazaar.abuse.ch](https://bazaar.abuse.ch/). Free. Without it, `intel-fetcher` skips MalwareBazaar entirely.
+
 **VirusTotal API key** *(optional, enables AV verdict enrichment)* — [virustotal.com/gui/my-apikey](https://www.virustotal.com/gui/my-apikey). Free tier (4 req/min) is enough. Lookup-only; the catalog never uploads samples to VT.
 
 **Triage API key** *(optional, enables dynamic sandbox analysis)* — [tria.ge/account/api](https://tria.ge/account/api). Free public tier available. Submissions are **public**, so by default only ELF/PE samples (already public via MalwareBazaar) are uploaded.
 
-Both keys go in `malware-catalog/deploy/.env` on the catalog server (see `.env.example`). Without them, `intel-fetcher` runs MalwareBazaar lookups only and `sandbox-submitter` stays off. Apply with `python redeploy.py --server malware-catalog`.
+Keys go in `malware-catalog/deploy/.env` on the catalog server. Set or rotate them with `python set-keys.py` from `malware-catalog/`. Without any intel keys, only `static-analyzer` runs; `sandbox-submitter` also requires `COMPOSE_PROFILES=triage`.
 
 ## honey.py — interactive launcher
 
