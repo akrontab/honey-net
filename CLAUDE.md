@@ -33,6 +33,23 @@ See `server-config/CLAUDE.md` for hardening details.
 
 `honey.py` is the single entry point — has a hardcoded `COMMANDS` list mapping names to modules in `scripts/`; adding a new script requires a manual entry there. Handles credentials upfront, threads state (`state.json`, IPs, `LOKI_HOST`) between dependent deploys, exposes everything as a menu or flag-based invocation. Scripts are independently runnable (`python scripts/<name>.py`).
 
+## Deployment
+
+Every deploy reconciles one of **three surfaces** of a server toward what `honey-net.json` and the package directories declare. Pick the surface, then the tool — don't hand-edit over SSH. Full reasoning and the gap-closing roadmap are in `docs/deployment-plan.md`.
+
+| Surface | Covers | Live-update tool |
+|---|---|---|
+| **Infra** | the VM (Linode plan, region, existence) | `provision --server NAME` (add) / `deprovision --server NAME` (remove) |
+| **System config** | host hardening — sshd on :65022, sysctl, fail2ban, UFW, honeypot port openings | **— no live path yet** (gap; today: `--force` reprovision) |
+| **Service** | compose stack, package code/config, dashboards | `redeploy --server NAME` |
+
+The two runbooks:
+
+- **Fresh provision (greenfield)** — `provision`: terraform creates VMs → per server in dependency order (backends first; log-stack → malware-catalog → honeypots) stage package, SCP + run `setup.sh` over **port 22** (hardens, moves SSH to :65022, joins tailnet, starts stack), poll the tailnet for the 100.x IP, thread `LOKI_HOST`/`CATALOG_URL` forward. Secrets collected up front; re-running skips live servers unless `--force`.
+- **Change to a live net** — `redeploy --server NAME` over Tailscale **:65022** (rsync to `/opt`, rebuild changed services, `up -d`). The daily driver. It **does not touch system config and excludes `.env`** — so config edits, new honeypot ports, and secret/`.env` changes have no live path yet (reprovision or manual SSH until those gaps close; see the plan).
+
+The port boundary is the seam: provision runs over :22 (box not yet hardened); all live updates run over :65022 (Tailscale-only). Any new live mechanism stays on the :65022 side — never re-opens :22.
+
 ## Component map
 
 | Path | Purpose | Docs |

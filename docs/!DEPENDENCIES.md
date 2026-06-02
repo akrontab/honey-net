@@ -74,6 +74,11 @@ incident-response-plan
 
 aws-eks-migration-plan        (standalone "Maybe" — depends on nothing)
   pairs    ↔ multi-operator           (soft: break-glass)
+
+deployment-plan               (Operational maturity — the change-delivery pattern; cross-cutting)
+  pairs    ↔ incident-response        (soft: intentional push ↔ unintentional recovery / self-healing)
+  uses     → multi-operator           (soft: supplies live-config delivery for operator-set changes)
+  feeds    → alerting                 (soft: secret-push path for Phase 2 channel tokens)
 ```
 
 ## Dependency table
@@ -93,6 +98,7 @@ Update the status when a plan graduates to `BACKLOG.md` or ships.
 | **multi-operator-plan.md** | `draft` · build-at-trigger (2nd operator joins) | Reach & multi-operator | — | incident-response (delivers the rotatable anchor) | aws-eks-migration-plan (per-provider break-glass) |
 | **incident-response-plan.md** | `draft` · blocked on multi-operator | Trust & audit + Operational maturity | multi-operator (single rotatable anchor) | — | operationalizing-intel (alerting/self-healing); aws-eks (break-glass console) |
 | **aws-eks-migration-plan.md** | `shelved` · "Maybe" (argues against itself) | Cloud portability | — | — | multi-operator (break-glass differs per provider). A "Maybe" — see plan's own recommendation against it on cost grounds. |
+| **deployment-plan.md** | `building` · Phase 1 shipped (pattern in root `CLAUDE.md`); Phases 2–5 build-at-trigger | Operational maturity | — *(cross-cutting; every plan's changes ride it)* | — | incident-response (intentional push ⇄ recovery/self-healing); multi-operator (delivers live-config for operator-set); alerting (secret-push for Phase 2 tokens); secrets-management thread (gap 6 forcing function) |
 
 ## Recommended build order
 

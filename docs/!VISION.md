@@ -136,8 +136,12 @@ scaling. Maturity here is the multiplier that makes reach and portability
 affordable.
 
 *Pointers.* Centers on the control plane (`honey.py`, `scripts/`, `lib/`) and the
-self-describing package model (`docs/!DESIGN.md`). Host/network failure modes and
-the response playbook are worked in `docs/incident-response-plan.md`.
+self-describing package model (`docs/!DESIGN.md`). The **deployment pattern** — the
+change taxonomy and the supported path to push each kind of change (fresh provision
+vs. change to a live net) — graduates to `docs/deployment-plan.md`; CI, cost
+visibility, and self-healing remain in this theme and graduate later. Host/network
+failure modes and the response playbook are worked in
+`docs/incident-response-plan.md`.
 
 ### Maintenance & code health
 
