@@ -45,7 +45,7 @@ if event_type == "login" {
   meta.login_success = true
   meta.auth_method = "native_password"
 }
-if raw.database != null { meta.database = raw.database }
+if raw.database != null && raw.database != "" { meta.database = raw.database }
 
 . = {
   "timestamp":     raw.timestamp,
