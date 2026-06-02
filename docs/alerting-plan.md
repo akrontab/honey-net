@@ -181,7 +181,7 @@ Phase 1 (steps 1–3) **live** on log-stack. Steps 4–7 graduate as their trigg
 - [x] Detection-event contract (`{job="detections"}` schema + severity tiers) — documented in `alerting/CLAUDE.md`
 - [x] Detector service on log-stack emitting rule classes 1–3 — `alerting/deploy/detector/detector.py`
 - [x] Detection dashboard (last-X, by severity / category / entity) — `log-stack/deploy/grafana/provisioning/dashboards/Triage/detections.json` (uid `triage-detections`)
-- [ ] First-seen registry in the catalog + `novel_<type>`; selector-novelty rules (rule 4, ex-HASSH)
+- [x] First-seen registry in the catalog + `novel_<type>`; selector-novelty rules (rule 4, ex-HASSH)
 - [ ] Notification dispatcher + first channel (Telegram), severity-routed
 - [ ] Additional channel services (Discord / webhook / callout)
 - [ ] (Trigger) campaign-novelty rule once operationalizing correlation lands

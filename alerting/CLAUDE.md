@@ -31,6 +31,8 @@ Stream labels in Loki: `{job="detections", severity="…", rule_id="…", catego
 | `sensor-dark` | Security-model violation | `page` | Honeypot has zero events for `SENSOR_DARK_MINS` min |
 | `new-sample` | Novelty | `notice` | New SHA-256 ingested into catalog |
 | `credential-burst` | Threshold | `notice` | Single IP ≥ `BURST_THRESHOLD` logins in one poll interval |
+| `novel-dl-host` | Selector novelty | `notice` | New download staging host observed (fires once per host via catalog registry) |
+| `novel-family` | Selector novelty | `notice` | New malware family identified in catalog (fires once per family via catalog registry) |
 
 ## Dedup
 

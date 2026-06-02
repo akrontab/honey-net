@@ -227,6 +227,79 @@ def _check_new_samples(start: datetime, end: datetime) -> None:
         )
 
 
+# ── Rule class 4 — Selector novelty ──────────────────────────────────────────
+
+def _register_novel(selector_type: str, value: str, context: dict) -> bool:
+    """POST to the catalog novelty registry. Returns True if value is new."""
+    if not CATALOG_URL:
+        return False
+    try:
+        r = requests.post(
+            f"{CATALOG_URL}/novelty/{selector_type}",
+            json={"value": value, "context": context},
+            timeout=10,
+        )
+        r.raise_for_status()
+        return r.json().get("is_new", False)
+    except requests.RequestException as e:
+        _log(f"novelty registry error ({selector_type}={value}): {e}")
+        return False
+
+
+def _check_novel_dl_host(start: datetime, end: datetime) -> None:
+    """Fire once per new download staging host observed in events."""
+    entries = _loki_query_range(
+        '{job="events"} | json | event_type = "download" | meta_dl_host != ""',
+        start, end, limit=500,
+    )
+    seen: set[str] = set()
+    for entry in entries:
+        host = entry.get("meta_dl_host") or entry.get("meta", {}).get("dl_host", "")
+        if not host or host in seen:
+            continue
+        seen.add(host)
+        src_ip = entry.get("src_ip", "")
+        url = entry.get("meta_url") or entry.get("meta", {}).get("url", "")
+        if _register_novel("dl_host", host, {"dl_host": host, "src_ip": src_ip, "url": url}):
+            detect(
+                rule_id="novel-dl-host",
+                severity="notice",
+                category="novelty",
+                entity=host,
+                summary=f"New download staging host: {host}",
+                context={"dl_host": host, "src_ip": src_ip, "url": url},
+            )
+
+
+def _check_novel_family() -> None:
+    """Fire once per new malware family identified in the catalog."""
+    if not CATALOG_URL:
+        return
+    try:
+        r = requests.get(f"{CATALOG_URL}/samples", params={"limit": 500}, timeout=15)
+        r.raise_for_status()
+        samples = r.json()
+    except requests.RequestException as e:
+        _log(f"catalog list error (novel-family): {e}")
+        return
+    seen: set[str] = set()
+    for sample in samples:
+        family = sample.get("family")
+        if not family or family in seen:
+            continue
+        seen.add(family)
+        sha = sample.get("sha256", "")
+        if _register_novel("family", family, {"family": family, "first_sample": sha}):
+            detect(
+                rule_id="novel-family",
+                severity="notice",
+                category="novelty",
+                entity=family,
+                summary=f"New malware family identified: {family}",
+                context={"family": family, "first_sample": sha},
+            )
+
+
 # ── Rule class 3 — Threshold (exercises dedup mechanism) ─────────────────────
 
 def _check_credential_burst(start: datetime, end: datetime) -> None:
@@ -286,6 +359,8 @@ def main() -> None:
             (_check_real_ssh_auth,    (start, end, op_ips)),
             (_check_sensor_dark,      (honeypots,)),
             (_check_new_samples,      (start, end)),
+            (_check_novel_dl_host,    (start, end)),
+            (_check_novel_family,     ()),
             (_check_credential_burst, (start, end)),
         ]:
             try:
