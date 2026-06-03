@@ -32,6 +32,7 @@ import hashlib
 import json
 import os
 import signal
+import ssl
 import sys
 import threading
 import uuid
@@ -42,6 +43,9 @@ from urllib.parse import parse_qs, urlparse
 LOG_FILE    = os.environ.get("HTTP_LOG_FILE", "/logs/http.json")
 SAMPLES_DIR = os.environ.get("SAMPLES_DIR", "/samples")
 LISTEN_PORT = int(os.environ.get("LISTEN_PORT", "80"))
+TLS_PORT    = int(os.environ.get("LISTEN_TLS_PORT", "443"))
+TLS_CERT    = os.environ.get("TLS_CERT", "")
+TLS_KEY     = os.environ.get("TLS_KEY", "")
 MAX_UPLOAD  = int(os.environ.get("MAX_UPLOAD", "3000000"))
 
 os.makedirs(os.path.dirname(LOG_FILE) or ".", exist_ok=True)
@@ -175,7 +179,7 @@ class Handler(BaseHTTPRequestHandler):
         creds = self._extract_creds(body)
         if creds:
             self._emit("login", method=self.command, path=path,
-                       username=creds[0], password=creds[1], user_agent=ua)
+                       username=creds[0], password=creds[1], auth_method=creds[2], user_agent=ua)
         elif body and self.command in ("POST", "PUT") and self._looks_like_upload(body):
             self._capture_upload(path, body, ua)
         else:
@@ -209,7 +213,7 @@ class Handler(BaseHTTPRequestHandler):
                 decoded = base64.b64decode(auth[6:]).decode("utf-8", "replace")
                 if ":" in decoded:
                     user, pw = decoded.split(":", 1)
-                    return (user, pw)
+                    return (user, pw, "basic")
             except (ValueError, base64.binascii.Error):
                 pass
         ctype = self.headers.get("Content-Type", "")
@@ -218,7 +222,7 @@ class Handler(BaseHTTPRequestHandler):
             user = _first(form, _USER_FIELDS)
             pw = _first(form, _PASS_FIELDS)
             if user is not None or pw is not None:
-                return (user, pw)
+                return (user, pw, "form")
         return None
 
     def _looks_like_upload(self, body: bytes) -> bool:
@@ -308,18 +312,41 @@ class Handler(BaseHTTPRequestHandler):
             self.close_connection = True
 
 
+def _make_tls_server() -> ThreadingHTTPServer:
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+    ctx.load_cert_chain(certfile=TLS_CERT, keyfile=TLS_KEY)
+    srv = ThreadingHTTPServer(("0.0.0.0", TLS_PORT), Handler)
+    srv.socket = ctx.wrap_socket(srv.socket, server_side=True)
+    return srv
+
+
 def main() -> None:
     os.makedirs(SAMPLES_DIR, exist_ok=True)
     httpd = ThreadingHTTPServer(("0.0.0.0", LISTEN_PORT), Handler)
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
-    sys.stdout.write(f"HTTP honeypot listening on :{LISTEN_PORT}\n")
+
+    tls_srv = None
+    if TLS_CERT and TLS_KEY and os.path.exists(TLS_CERT) and os.path.exists(TLS_KEY):
+        try:
+            tls_srv = _make_tls_server()
+            threading.Thread(target=tls_srv.serve_forever, daemon=True).start()
+            sys.stdout.write(f"HTTP honeypot listening on :{LISTEN_PORT} and :{TLS_PORT} (TLS)\n")
+        except Exception as exc:
+            sys.stdout.write(f"WARNING: TLS startup failed: {exc}\n")
+            tls_srv = None
+    else:
+        sys.stdout.write(f"HTTP honeypot listening on :{LISTEN_PORT}\n")
     sys.stdout.flush()
+
     try:
         httpd.serve_forever()
     except (KeyboardInterrupt, SystemExit):
         pass
     finally:
         httpd.server_close()
+        if tls_srv:
+            tls_srv.server_close()
 
 
 if __name__ == "__main__":

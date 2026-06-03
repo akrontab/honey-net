@@ -20,17 +20,40 @@
     "type": "honeypot",
     "ssh_key": "~/.ssh/mysql-ssh-honeypot",
     "tailscale_ephemeral": true,
-    "ports": [22, 23, 80, 3306],
-    "honeypots": ["cowrie", "http", "mysql"],
-    "addons": ["metadata", "malware-sender"]
+    "ports": [
+      22,
+      23,
+      80,
+      443,
+      3306
+    ],
+    "honeypots": [
+      "cowrie",
+      "http",
+      "mysql"
+    ],
+    "addons": [
+      "metadata",
+      "malware-sender"
+    ]
   },
   {
     "name": "smb-ftp",
     "type": "honeypot",
     "ssh_key": "~/.ssh/smb-ftp-linode",
     "tailscale_ephemeral": true,
-    "ports": [21, 139, 445],
-    "honeypots": ["ftp", "smb"],
-    "addons": ["metadata", "malware-sender"]
+    "ports": [
+      21,
+      139,
+      445
+    ],
+    "honeypots": [
+      "ftp",
+      "smb"
+    ],
+    "addons": [
+      "metadata",
+      "malware-sender"
+    ]
   }
 ]

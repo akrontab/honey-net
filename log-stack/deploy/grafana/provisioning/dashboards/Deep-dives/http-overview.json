@@ -1,0 +1,380 @@
+{
+  "title": "HTTP — Deep-dive",
+  "uid": "http-overview",
+  "description": "Per-protocol HTTP honeypot analysis on the raw {job=\"http\"} stream. Top paths, user-agents, credential attempts, and uploaded payloads. For cross-honeypot web traffic use Hunt / Download & Infra Intel.",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {"from": "now-24h", "to": "now"},
+  "timepicker": {},
+  "refresh": "1m",
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "tags": ["honeypot", "http", "deep-dive"],
+  "links": [],
+  "annotations": {"list": []},
+  "templating": {
+    "list": [
+      {
+        "name": "host",
+        "label": "Sensor host",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "loki"},
+        "query": "label_values({job=\"http\"}, host)",
+        "definition": "label_values({job=\"http\"}, host)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {"selected": false, "text": "All", "value": "$__all"}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "HTTP Requests",
+      "description": "Total probe and scan requests (excludes connect/session_end bookkeeping events)",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "blue"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"http\", host=~\"$host\"} | json | type=\"request\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Unique Attacker IPs",
+      "description": "Distinct source IPs that sent at least one request",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "purple"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "purple", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "count(sum by (src_host) (count_over_time({job=\"http\", host=~\"$host\"} | json | type!=\"connect\" | type!=\"session_end\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Credential Attempts",
+      "description": "Login events — form submissions and HTTP Basic auth attempts",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "orange"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "orange", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"http\", host=~\"$host\"} | json | type=\"login\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Uploads Captured",
+      "description": "File upload events — multipart, PUT bodies, or binary POSTs persisted to inbox",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "red"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"http\", host=~\"$host\"} | json | type=\"download\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Request Rate over Time",
+      "description": "HTTP event rate broken out by type. Login and upload spikes indicate active tool campaigns.",
+      "gridPos": {"h": 9, "w": 16, "x": 0, "y": 4},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {"group": "A", "mode": "none"}
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"calcs": ["max", "sum"], "displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"http\", host=~\"$host\"} | json | type=\"request\" [$__interval]))",
+          "legendFormat": "Requests",
+          "queryType": "range",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"http\", host=~\"$host\"} | json | type=\"login\" [$__interval]))",
+          "legendFormat": "Logins",
+          "queryType": "range",
+          "refId": "B"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"http\", host=~\"$host\"} | json | type=\"download\" [$__interval]))",
+          "legendFormat": "Uploads",
+          "queryType": "range",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "bargauge",
+      "title": "Top Probed Paths",
+      "description": "Most-requested URL paths. Common scanner targets: /.env, /.git/config, /wp-login.php, /admin",
+      "gridPos": {"h": 9, "w": 8, "x": 16, "y": 4},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "showUnfilled": true
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(15, sum by (path) (count_over_time({job=\"http\", host=~\"$host\"} | json | path != \"\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{path}}",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Top User-Agents",
+      "description": "Scanner and tool fingerprints. Mass scanners use distinctive UAs; empty UA often indicates raw socket tools.",
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 13},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Count"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(25, sum by (user_agent) (count_over_time({job=\"http\", host=~\"$host\"} | json | user_agent != \"\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{user_agent}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"user_agent": "User-Agent", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Top Credential Pairs",
+      "description": "Username / password combinations submitted to login forms and Basic auth. Reveals spray wordlists and default credential dictionaries.",
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 13},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Count"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(25, sum by (username, password) (count_over_time({job=\"http\", host=~\"$host\"} | json | type=\"login\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{username}} / {{password}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"username": "Username", "password": "Password", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Top Uploading IPs",
+      "description": "Attackers that dropped files. Each represents an active exploitation attempt, not a passive scan.",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 23},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Uploads"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(20, sum by (src_host) (count_over_time({job=\"http\", host=~\"$host\"} | json | type=\"download\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{src_host}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"src_host": "Source IP", "Value #A": "Uploads"}}}
+      ]
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Top Uploaded Hashes",
+      "description": "SHA-256 of payloads dropped via file upload, PUT, or binary POST. Cross-reference with the malware catalog for YARA hits and AV verdicts.",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 23},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Count"}]
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(20, sum by (sample_sha256) (count_over_time({job=\"http\", host=~\"$host\"} | json | type=\"download\" | sample_sha256 != \"\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{sample_sha256}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"sample_sha256": "SHA-256", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 11,
+      "type": "logs",
+      "title": "Recent Events",
+      "description": "Live request stream — excludes connect/session_end bookkeeping. Use type filters to focus on logins or uploads.",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 31},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "{job=\"http\", host=~\"$host\"} | json | type!=\"connect\" | type!=\"session_end\"",
+        "queryType": "range",
+        "refId": "A"
+      }]
+    }
+  ]
+}

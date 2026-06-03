@@ -9,8 +9,8 @@ Ideas and features to implement. Tell Claude "implement the next backlog item" t
 - [x] Dashboard overhaul — Hunt core: Credential intel + Download & infra intel on `meta_*`. See `docs/dashboard-overhaul-plan.md`.
 - [ ] Nice to have later: multiple operators with thier own user accounts with sudo access for host management. Maintain keybased logins
 - [x] Update README and remove references to specific honeypots in logs
-- [ ] HTTP honeypot phase 4 — TLS on :443 (self-signed cert). Add 443 to `mysql-ssh` `ports` in `honey-net.json`, open it in `honey-pots/http/deploy/setup/fragment.sh`, and serve TLS from the app. See `docs/http-honeypot-plan.md`.
-- [ ] HTTP honeypot phase 5 — Grafana dashboard under `log-stack/deploy/grafana/provisioning/dashboards/`: top paths, top user-agents, credential attempts, uploads. See `docs/http-honeypot-plan.md`.
+- [x] HTTP honeypot phase 4 — TLS on :443 (self-signed cert). Add 443 to `mysql-ssh` `ports` in `honey-net.json`, open it in `honey-pots/http/deploy/setup/fragment.sh`, and serve TLS from the app. See `docs/http-honeypot-plan.md`.
+- [x] HTTP honeypot phase 5 — Grafana dashboard under `log-stack/deploy/grafana/provisioning/dashboards/`: top paths, top user-agents, credential attempts, uploads. See `docs/http-honeypot-plan.md`.
 
 ## Maybes
 

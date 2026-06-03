@@ -39,6 +39,14 @@ event_type_map = {
 event_type, _ = get(event_type_map, [string!(raw.type)])
 if event_type == null { abort }
 
+meta = {}
+if event_type == "login" {
+  meta.login_success = "false"
+  if raw.auth_method != null {
+    meta.auth_method = string!(raw.auth_method)
+  }
+}
+
 . = {
   "timestamp":     raw.timestamp,
   "honeypot":      "http",
@@ -51,6 +59,7 @@ if event_type == null { abort }
   "password":      raw.password,
   "payload":       raw.payload,
   "sample_sha256": raw.sample_sha256,
+  "meta":          meta,
 }
 '''
 

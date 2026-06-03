@@ -6,12 +6,17 @@ services:
     restart: unless-stopped
     ports:
       - "0.0.0.0:80:80"
+      - "0.0.0.0:443:443"
     volumes:
       - ./volumes/logs:/logs
       - ../inbox/http:/samples
+      - ./tls:/tls:ro
     environment:
       - HTTP_LOG_FILE=/logs/http.json
       - SAMPLES_DIR=/samples
+      - TLS_CERT=/tls/cert.pem
+      - TLS_KEY=/tls/key.pem
+      - LISTEN_TLS_PORT=443
     security_opt:
       - no-new-privileges:true
     deploy:

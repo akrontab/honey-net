@@ -120,6 +120,5 @@ Both open questions are answered and the package shipped as a co-tenant on
 
 **Remaining work** (track in `BACKLOG.md` if/when prioritized):
 
-- [ ] Phase 4 — TLS on :443 (self-signed cert); add 443 to the `mysql-ssh` `ports`
-      and open it in `fragment.sh`. Currently port 80 only.
-- [ ] Phase 5 — Grafana dashboard: top paths, top user-agents, credential attempts, uploads.
+- [x] Phase 4 — TLS on :443 (self-signed cert); 443 added to `mysql-ssh` `ports`, UFW opened in `fragment.sh`, cert generated at provision time under `${DEPLOY_DIR}/http/tls/`, container mounts `/tls` read-only. `meta.login_success` + `meta.auth_method` added to VRL transform.
+- [x] Phase 5 — Grafana dashboard: `Deep-dives/http-overview.json` (uid `http-overview`); top paths, user-agents, credential pairs, uploading IPs, payload hashes, live event log.
