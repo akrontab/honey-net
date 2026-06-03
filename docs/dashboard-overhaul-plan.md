@@ -159,8 +159,10 @@ wait on that spike.
 
 - [x] Triage / Overview dashboard on `{job="events"}` (replaces `normalized-events`) — `Triage/overview.json` (uid `triage-overview`); provisioning switched to `foldersFromFilesStructure: true` so tier subdirs become Grafana folders. *Built + JSON-validated; pending live verification against Loki.*
 - [x] Operate / Fleet health re-keyed on `(honeypot, host)`; Host security; Pipeline health — `Operate/{fleet-health,host-security,pipeline-health}.json`. Sensor-dark shown as per-sensor rate-to-zero (paging is an alerting rule, not a panel); pipeline disk/Loki-internal metrics flagged as needing Prometheus. *Built + JSON-validated; pending live verification.*
-- [ ] Hunt / Credential intel + Download & infra intel on `meta_*`
-- [ ] Hunt / Campaign pivot + event-timeline session replay (with `operationalizing-intel`)
+- [x] Hunt / Credential intel + Download & infra intel on `meta_*` — `Hunt/credential-intel.json` (uid `hunt-credential-intel`), `Hunt/download-infra-intel.json` (uid `hunt-download-infra`). *Built + JSON-validated; pending live verification.*
+- [x] Hunt / Campaign pivot — `Hunt/campaign-pivot.json` (uid `hunt-campaign-pivot`); co-occurrence pivot on `meta_dl_host` × `src_ip`. *Built + JSON-validated; pending live verification.*
+- [x] Hunt / Attacker profile — `Hunt/attacker-profile.json` (uid `hunt-attacker-profile`); per-IP cross-surface investigation replacing `attacker-drilldown`. *Built + JSON-validated; pending live verification.*
+- [ ] Hunt / Event-timeline session replay (with `operationalizing-intel`) — `session_id`-keyed replay board; deferred, coordinates with `operationalizing-intel-plan.md`.
 - [ ] Per-protocol deep-dives (Cowrie, MySQL, Dionaea, HTTP) + drill-down data links
 - [ ] (Q5) protocol-filtered tile + telnet protocol view + fingerprint panels
 - [ ] Deprecate superseded dashboards; dashboard contract added to `honey-pots/CLAUDE.md` + `log-stack/CLAUDE.md`

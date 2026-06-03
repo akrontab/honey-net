@@ -1,6 +1,6 @@
 # honey-net
 
-A proof-of-concept honeypot network for threat intelligence and attacker behavior research. Honeypot servers expose common services (SSH, Telnet, MySQL) to the public internet, capture attacker activity, and ship logs to a private Grafana/Loki stack over Tailscale VPN.
+A proof-of-concept honeypot network for threat intelligence and attacker behavior research. Honeypot servers expose common services (SSH, Telnet, MySQL, HTTP, SMB, FTP) to the public internet, capture attacker activity, and ship logs to a private Grafana/Loki stack over Tailscale VPN.
 
 **Cost:** ~$10–15/mo on Linode Nanodes. **CLAUDE.md** has full technical details for every component.
 
@@ -30,7 +30,7 @@ forward automatically.
 ```
 python honey.py
 ```
-Select **logs** to pull log files locally. Open Grafana at `http://<log-stack-tailscale-ip>:3000` — raw streams appear under `{job="cowrie"}`, `{job="mysql"}`, `{job="dionaea"}`; the normalised cross-honeypot stream is `{job="events"}`.
+Select **logs** to pull log files locally. Open Grafana at `http://<log-stack-tailscale-ip>:3000` — raw streams appear under `{job="cowrie"}`, `{job="mysql"}`, `{job="http"}`, `{job="smb"}`, `{job="ftp"}`; the normalised cross-honeypot stream is `{job="events"}`.
 
 ---
 
@@ -54,7 +54,7 @@ Select **logs** to pull log files locally. Open Grafana at `http://<log-stack-ta
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Honeypot servers** run one or more service packages (Cowrie SSH/Telnet, MySQL emulator) plus a Vector sidecar that ships logs to Loki over Tailscale. Public-facing.
+- **Honeypot servers** run one or more service packages (Cowrie SSH/Telnet, MySQL, HTTP, SMB, FTP emulators) plus a Vector sidecar that ships logs to Loki over Tailscale. Public-facing. Two servers currently: `mysql-ssh` (cowrie, http, mysql) and `smb-ftp` (smb, ftp).
 - **Log-stack** runs Grafana + Loki. Receives logs from all honeypots. Never exposed to the public internet — Tailscale only.
 - **Malware-catalog** receives malware samples from honeypots running the `malware-sender` addon. Deduplicates by SHA-256. Web UI + REST API served via nginx, API backend internal-only.
 - Real SSH on every host is port **65022**, Tailscale-only. Port 22 goes to the honeypot.
@@ -82,7 +82,9 @@ honey-net/
 ├── honey-pots/
 │   ├── cowrie/               ← SSH/Telnet honeypot package
 │   ├── mysql/                ← MySQL wire-protocol honeypot package
-│   └── dionaea/              ← multi-protocol honeypot package
+│   ├── http/                 ← HTTP honeypot package
+│   ├── smb/                  ← SMB honeypot package
+│   └── ftp/                  ← FTP honeypot package
 ├── addons/
 │   ├── metadata/             ← log sidecar: extracts metadata into inbox
 │   └── malware-sender/       ← submits captured samples to malware-catalog
@@ -195,7 +197,9 @@ python scripts/test_loki.py    # Push a test log line to Loki
 Open Grafana at `http://<log-stack-tailscale-ip>:3000`:
 - `{job="cowrie"}` — raw Cowrie events
 - `{job="mysql"}` — raw MySQL events
-- `{job="dionaea"}` — raw Dionaea events
+- `{job="http"}` — raw HTTP events
+- `{job="smb"}` — raw SMB events
+- `{job="ftp"}` — raw FTP events
 - `{job="auth"}` — host auth.log
 - `{job="events"}` — normalised cross-honeypot stream
 
