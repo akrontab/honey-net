@@ -47,7 +47,6 @@ Useful LogQL queries in Explore:
 ```logql
 {job="cowrie"}   | json | eventid="cowrie.login.failed"   # SSH brute force
 {job="mysql"}    | json | event="query"                   # SQL queries
-{job="dionaea"}  | json | type="credentials"              # SMB/FTP creds
 {job="auth"}     |= "Failed"                              # real SSH auth failures
 {job="syslog"}   |= "fail2ban"                            # ban/unban events
 {job="events"}   | json | event_type="login"              # logins across every honeypot

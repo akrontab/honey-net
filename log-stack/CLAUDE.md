@@ -9,7 +9,7 @@ Docker modifies iptables directly and bypasses UFW. Grafana (3000) and Loki (310
 ## LogQL streams
 
 ```
-{job="cowrie"} / {job="mysql"} / {job="dionaea"}    # raw service events
+{job="cowrie"} / {job="mysql"}                      # raw service events
 {job="auth"} / {job="syslog"}                       # host logs from honeypot
 {job="catalog"}                                      # malware-catalog audit events
 {job="events"}                                       # normalized cross-honeypot stream

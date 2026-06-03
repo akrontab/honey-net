@@ -31,8 +31,6 @@ Each server's `honey-net.json` entry lists which addons it runs:
   cowrie/                            # per-honeypot drop dir, created by cowrie's fragment
     <whatever>                       # cowrie's binary (sha256-named by cowrie convention)
     <whatever>.capture.json          # provenance sidecar from cowrie's capture-writer
-  dionaea/                           # per-honeypot drop dir, created by dionaea's fragment
-    <md5>                            # dionaea's binary (md5-named)
   <sha256>                           # canonical binary (written by metadata)
   <sha256>.meta.json                 # enriched sidecar (written by metadata)
 ```

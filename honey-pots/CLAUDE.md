@@ -15,7 +15,7 @@ To create a new package, copy an existing one (`cowrie/` is simplest, `mysql/` f
 | Shared inbox parent | `/opt/<server>/inbox/` — created by `server-config/setup.sh` `chmod 777` |
 | Per-honeypot inbox subdir | created by the honeypot's `fragment.sh` |
 
-Honeypots write samples with whatever filename their upstream code picks (sha256 for cowrie, md5 for dionaea). The `metadata` addon canonicalises to `/inbox/<sha256>` + `/inbox/<sha256>.meta.json`. Honeypots that don't capture samples skip the `/samples` mount and the `mkdir inbox/<name>` step.
+Honeypots write samples with whatever filename their upstream code picks (sha256 for cowrie). The `metadata` addon canonicalises to `/inbox/<sha256>` + `/inbox/<sha256>.meta.json`. Honeypots that don't capture samples skip the `/samples` mount and the `mkdir inbox/<name>` step.
 
 ## docker-compose.yml conventions
 
@@ -66,18 +66,18 @@ The contract lives as **N copy-pasted `remap` transforms** (one per pot, no shar
 
 #### Standard `meta` keys (by capability)
 
-| `event_type` | `meta` key | Concept | Cowrie | MySQL | Dionaea | HTTP |
-|---|---|---|---|---|---|---|
-| `login` | `login_success` | auth outcome (`true`/`false`) | `success`/`failed` eventid | always-accept → `true` | n/a | form / basic result |
-| `login` | `auth_method` | how they authed | `password` / `pubkey` | `native_password` | — | `basic` / `form` |
-| `connect` | `client_fingerprint` | client identity (value) | HASSH | — | — | JA3 / JA4 |
-| `connect` | `fingerprint_type` | which algorithm produced it | `hassh` | — | — | `ja3` / `ja4` |
-| `connect` | `client_version` | client banner | `cowrie.client.version` | — | — | User-Agent |
-| `download` | `url` | fetch URL (also the `payload` slot's old home) | `raw.url` | — | `raw.url` | upload origin |
-| `download` | `dl_host` | staging infra (host of `url`) | derived | — | derived | — |
-| `download` | `dl_filename` | payload name | derived | — | derived | upload name |
-| `command` | `command_success` | did it run (`true`/`false`) | `input` / `failed` eventid | — | — | — |
-| `query` | `database` | target DB | — | `raw.database` | — | — |
+| `event_type` | `meta` key | Concept | Cowrie | MySQL | HTTP |
+|---|---|---|---|---|---|
+| `login` | `login_success` | auth outcome (`true`/`false`) | `success`/`failed` eventid | always-accept → `true` | form / basic result |
+| `login` | `auth_method` | how they authed | `password` / `pubkey` | `native_password` | `basic` / `form` |
+| `connect` | `client_fingerprint` | client identity (value) | HASSH | — | JA3 / JA4 |
+| `connect` | `fingerprint_type` | which algorithm produced it | `hassh` | — | `ja3` / `ja4` |
+| `connect` | `client_version` | client banner | `cowrie.client.version` | — | User-Agent |
+| `download` | `url` | fetch URL (also the `payload` slot's old home) | `raw.url` | — | upload origin |
+| `download` | `dl_host` | staging infra (host of `url`) | derived | — | — |
+| `download` | `dl_filename` | payload name | derived | — | upload name |
+| `command` | `command_success` | did it run (`true`/`false`) | `input` / `failed` eventid | — | — |
+| `query` | `database` | target DB | — | `raw.database` | — |
 
 `client_fingerprint` is **one field plus a `fingerprint_type` discriminator** (not separate `hassh`/`ja3` keys) so a cross-pot fingerprint query matches one key and a new algorithm slots in without a schema change.
 
@@ -107,7 +107,7 @@ Fragment responsibilities:
 - **Create the per-honeypot inbox subdir** with `chmod 777` if it captures samples.
 - **Fix ownership** for non-root container UIDs (Cowrie is 999).
 - **Build locally-built images explicitly in sequence.** Never `docker compose up --build` — concurrent BuildKit crashes dockerd (see `mysql/CLAUDE.md`).
-- **Run `docker compose up -d` only if this fragment is designed to always be last.** Cowrie's fragment does not — it is always followed by addons on real servers. MySQL and dionaea fragments always run `up -d` (designed as standalone-terminal honeypots). Malware-sender always runs `up -d` as the terminal addon. On multi-component servers, a non-terminal fragment that runs `up -d` will start the stack before later images are built, then the final fragment starts it again.
+- **Run `docker compose up -d` only if this fragment is designed to always be last.** Cowrie's fragment does not — it is always followed by addons on real servers. MySQL's fragment always runs `up -d` (designed as a standalone-terminal honeypot). Malware-sender always runs `up -d` as the terminal addon. On multi-component servers, a non-terminal fragment that runs `up -d` will start the stack before later images are built, then the final fragment starts it again.
 
 ## honey-net.json entry
 

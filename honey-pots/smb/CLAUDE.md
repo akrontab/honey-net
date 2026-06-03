@@ -49,10 +49,9 @@ AUTHENTICATE_MESSAGE log line.
 
 ## Gotchas
 
-### Paired with dionaea on smb-ftp
-dionaea handles FTP (port 21); this package handles SMB (ports 139, 445).
+### Terminal fragment
 The smb fragment runs `docker compose up -d` as the terminal step for the
-combined stack. If smb is removed from the server, run `up -d` manually or
+stack on smb-ftp. If smb is removed from the server, run `up -d` manually or
 add another terminal component.
 
 ### Credential parser depends on impacket log format
