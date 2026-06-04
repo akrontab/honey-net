@@ -2,11 +2,6 @@
 # Runs after base hardening and Tailscale are in place.
 # Opens SMB ports, creates volume directories, and starts the stack.
 
-# ── Open honeypot ports ───────────────────────────────────────────────
-echo "[smb] Opening SMB honeypot ports..."
-ufw allow "139/tcp" comment 'smb honeypot'
-ufw allow "445/tcp" comment 'smb honeypot'
-
 # ── Create volume directories ─────────────────────────────────────────
 echo "[smb] Creating volume directories..."
 mkdir -p "${DEPLOY_DIR}/smb/volumes/logs"

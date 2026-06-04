@@ -2,11 +2,6 @@
 # Runs after base hardening and Tailscale are in place.
 # Adds cowrie-specific UFW ports, creates volume directories, and starts the stack.
 
-# ── Open honeypot ports ───────────────────────────────────────────────
-echo "[cowrie] Opening honeypot ports 22 and 23..."
-ufw allow "22/tcp"  comment 'cowrie SSH honeypot'
-ufw allow "23/tcp"  comment 'cowrie Telnet honeypot'
-
 # ── Create volume directories ─────────────────────────────────────────
 echo "[cowrie] Creating volume directories..."
 mkdir -p "${DEPLOY_DIR}/cowrie/volumes/var/log/cowrie"

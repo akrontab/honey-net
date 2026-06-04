@@ -4,11 +4,6 @@
 # (on mysql-ssh the terminal addon is malware-sender). Keep `http` ahead of a
 # component that starts the stack, or this pot is built but never started.
 
-# ── Open honeypot ports ───────────────────────────────────────────────
-echo "[http] Opening HTTP honeypot ports 80 and 443..."
-ufw allow "80/tcp" comment 'http honeypot'
-ufw allow "443/tcp" comment 'http honeypot TLS'
-
 # ── Create volume directories ─────────────────────────────────────────
 echo "[http] Creating volume directories..."
 mkdir -p "${DEPLOY_DIR}/http/volumes/logs"

@@ -1,10 +1,6 @@
 # FTP honeypot fragment — appended to server-config/setup.sh by provision.py.
 # Runs after base hardening and Tailscale are in place.
 
-# ── Open honeypot port ────────────────────────────────────────────────
-echo "[ftp] Opening FTP honeypot port..."
-ufw allow "21/tcp" comment 'ftp honeypot'
-
 # ── Create volume directories ─────────────────────────────────────────
 echo "[ftp] Creating volume directories..."
 mkdir -p "${DEPLOY_DIR}/ftp/volumes/logs"

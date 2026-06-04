@@ -95,6 +95,7 @@ COMMANDS = [
     ("provision",    "provision",    "End-to-end provisioning: terraform + server setup", _provision_args),
     ("deprovision",  "deprovision",  "Destroy one server's VM, clean Tailscale, clear state", None),
     ("redeploy",     "redeploy",     "Update a live server (port 65022, Tailscale)",  None),
+    ("reconfigure",  "reconfigure",  "Re-apply host hardening config to a live server", None),
     ("connect",    "connect",        "Open an SSH session to a server",               _connect_args),
     ("sync",       "sync_ips",       "Sync IPs from Terraform + Tailscale to state.json", None),
     ("logs",       "get_logs",       "Pull logs from a honeypot server",              None),

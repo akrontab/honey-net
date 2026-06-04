@@ -2,10 +2,6 @@
 # Runs after base hardening and Tailscale are in place.
 # Adds MySQL-specific UFW port, creates volume directories, and starts the stack.
 
-# ── Open honeypot port ────────────────────────────────────────────────
-echo "[mysql] Opening MySQL honeypot port 3306..."
-ufw allow "3306/tcp" comment 'MySQL honeypot'
-
 # ── Create volume directories ─────────────────────────────────────────
 echo "[mysql] Creating volume directories..."
 mkdir -p "${DEPLOY_DIR}/mysql/volumes/logs"

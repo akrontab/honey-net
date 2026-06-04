@@ -4,21 +4,6 @@
 # pinning heralding==1.0.7 from PyPI). Uses network_mode: host + pasta for real
 # attacker src_ip preservation — same pattern as Cowrie.
 
-# ── Open honeypot ports ───────────────────────────────────────────────
-echo "[heralding] Opening honeypot ports..."
-ufw allow "21/tcp"   comment 'heralding ftp'
-ufw allow "22/tcp"   comment 'heralding ssh'
-ufw allow "23/tcp"   comment 'heralding telnet'
-ufw allow "25/tcp"   comment 'heralding smtp'
-ufw allow "80/tcp"   comment 'heralding http'
-ufw allow "110/tcp"  comment 'heralding pop3'
-ufw allow "143/tcp"  comment 'heralding imap'
-ufw allow "443/tcp"  comment 'heralding https'
-ufw allow "1080/tcp" comment 'heralding socks5'
-ufw allow "3306/tcp" comment 'heralding mysql'
-ufw allow "5432/tcp" comment 'heralding postgresql'
-ufw allow "5900/tcp" comment 'heralding vnc'
-
 # ── Create volume directories ─────────────────────────────────────────
 echo "[heralding] Creating volume directories..."
 mkdir -p "${DEPLOY_DIR}/heralding/volumes/logs"

@@ -47,11 +47,10 @@ sys.path.insert(1, str(Path(__file__).resolve().parent))  # for check_ssh_keys
 from lib.color import bold, green, gray, yellow
 from lib.config import REPO_ROOT, load_manifest
 from lib.files import copy_tree
-from lib.package import assemble_honeypot_package
+from lib.package import assemble_honeypot_package, assemble_honeypot_setup
 from lib.ssh import DEVNULL, ssh_key, ssh_base_args, scp_args, run_ssh
 from check_ssh_keys import check_or_create
 
-_CONF_FILES = ["sshd_hardening.conf", "99-hardening.conf", "fail2ban-jail.local"]
 _TF_DIR = REPO_ROOT / "terraform"
 _STATE_FILE = REPO_ROOT / "state.json"
 
@@ -286,29 +285,7 @@ def _stage_backend(server, pkg_dir):
 def _stage_honeypot(server, pkg_dir):
     pkg_dir.mkdir()
     assemble_honeypot_package(server, pkg_dir)
-    for cf in _CONF_FILES:
-        src = REPO_ROOT / "server-config" / cf
-        if not src.exists():
-            sys.exit(f"server-config/{cf} not found")
-        (pkg_dir / cf).write_bytes(src.read_bytes())
-    base_sh = REPO_ROOT / "server-config" / "setup.sh"
-    if not base_sh.exists():
-        sys.exit("server-config/setup.sh not found")
-    setup = base_sh.read_text(encoding="utf-8")
-    for hp in server.get("honeypots", []):
-        frag = REPO_ROOT / "honey-pots" / hp / "deploy" / "setup" / "fragment.sh"
-        if frag.exists():
-            setup += f"\n\n# --- {hp} ---\n" + frag.read_text(encoding="utf-8")
-        else:
-            print(f"  Warning: no fragment.sh for '{hp}'", file=sys.stderr)
-    for addon in server.get("addons", []):
-        frag = REPO_ROOT / "addons" / addon / "deploy" / "setup" / "fragment.sh"
-        if frag.exists():
-            setup += f"\n\n# --- {addon} ---\n" + frag.read_text(encoding="utf-8")
-        else:
-            print(f"  Warning: no fragment.sh for addon '{addon}'", file=sys.stderr)
-    with (pkg_dir / "setup.sh").open("w", encoding="utf-8", newline="\n") as f:
-        f.write(setup)
+    assemble_honeypot_setup(server, pkg_dir)
 
 
 def _scp(pkg_dir, key, pub_ip, *, retries=6, delay=10):
