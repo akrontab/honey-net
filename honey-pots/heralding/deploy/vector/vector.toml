@@ -1,0 +1,104 @@
+data_dir = "/vector-data"
+
+# ── Sources ───────────────────────────────────────────────────────────
+
+# log_auth.csv: one row per credential attempt (real-time, written immediately).
+# Columns: timestamp,auth_id,session_id,source_ip,source_port,destination_port,protocol,username,password
+[sources.heralding_auth]
+type = "file"
+include = ["/logs/heralding/log_auth.csv"]
+read_from = "beginning"
+
+# log_session.json: complete session in JSONL (written on session end, richer detail).
+# Used as the raw {job="heralding"} stream for forensics.
+[sources.heralding_session]
+type = "file"
+include = ["/logs/heralding/log_session.json"]
+read_from = "beginning"
+
+[sources.auth_log]
+type = "file"
+include = ["/hostlogs/auth.log"]
+read_from = "beginning"
+
+[sources.syslog_file]
+type = "file"
+include = ["/hostlogs/syslog"]
+read_from = "beginning"
+
+# ── Transforms ────────────────────────────────────────────────────────
+
+# CSV adapter: parse each credential row into the normalized event schema.
+# One login event per auth attempt — protocol varies per row (ftp, ssh, http, ...).
+# login_success is always false: heralding never grants access, it only captures.
+[transforms.heralding_events]
+type = "remap"
+inputs = ["heralding_auth"]
+source = '''
+rows = parse_csv!(string!(.message))
+if length(rows) == 0 { abort }
+row = rows[0]
+if length(row) < 9 { abort }
+if row[0] == "timestamp" { abort }
+
+. = {
+  "timestamp":     row[0],
+  "honeypot":      "heralding",
+  "protocol":      downcase(string!(row[6])),
+  "src_ip":        row[3],
+  "src_port":      to_int(row[4]) ?? null,
+  "session_id":    row[2],
+  "event_type":    "login",
+  "username":      row[7],
+  "password":      row[8],
+  "payload":       null,
+  "sample_sha256": null,
+  "meta": {
+    "login_success": "false",
+    "auth_method":   "password",
+  },
+}
+'''
+
+# ── Sinks ─────────────────────────────────────────────────────────────
+
+[sinks.loki_heralding]
+type = "loki"
+inputs = ["heralding_session"]
+endpoint = "http://${LOKI_HOST}:3100"
+labels.job = "heralding"
+labels.host = "${HOSTNAME}"
+
+[sinks.loki_heralding.encoding]
+codec = "text"
+
+[sinks.loki_heralding_events]
+type = "loki"
+inputs = ["heralding_events"]
+endpoint = "http://${LOKI_HOST}:3100"
+labels.job = "events"
+labels.honeypot = "heralding"
+labels.host = "${HOSTNAME}"
+
+[sinks.loki_heralding_events.encoding]
+codec = "json"
+
+[sinks.loki_auth]
+type = "loki"
+inputs = ["auth_log"]
+endpoint = "http://${LOKI_HOST}:3100"
+labels.job = "auth"
+labels.host = "${HOSTNAME}"
+
+[sinks.loki_auth.encoding]
+codec = "text"
+
+[sinks.loki_syslog]
+type = "loki"
+inputs = ["syslog_file"]
+endpoint = "http://${LOKI_HOST}:3100"
+labels.job = "syslog"
+labels.host = "${HOSTNAME}"
+
+[sinks.loki_syslog.encoding]
+codec = "text"

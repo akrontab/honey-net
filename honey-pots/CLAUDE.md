@@ -136,3 +136,43 @@ Fragment responsibilities:
 - [ ] SSH key pair at the `ssh_key` path
 - [ ] `python scripts/provision.py --server <name>`
 - [ ] Grafana dashboard under `log-stack/deploy/grafana/provisioning/dashboards/`
+
+## Wrapping an upstream honeypot (code we don't control)
+
+When the upstream pot is a third-party project (PyPI package, prebuilt image, git
+source) follow the general process in `docs/wrapping-upstream-honeypots-plan.md`.
+The short version:
+
+**The package machinery requires no changes.** `provision.py` / `redeploy.py` only
+build services that declare a `build:` block — an `image:`-only service just pulls
+and runs. The vector assembler merges regardless of image source.
+
+**The work lives in two files this package already owns:**
+
+1. **Image sourcing** — choose one mode:
+   - **Mode A**: `image: ghcr.io/vendor/foo@sha256:<digest>` — pin by digest, never a moving tag
+   - **Mode B**: thin `Dockerfile` with `pip install foo==<version>` (or equivalent) — used
+     when upstream has no maintained image. Slots into the existing build-in-sequence path.
+
+2. **Vector adapter** — the upstream emits its own format; the `remap` translates it.
+   Pick the source by what upstream writes:
+
+   | Upstream emits | Vector source | Adapter |
+   |---|---|---|
+   | JSON file (alien field names) | `file` | `parse_json!` + re-key |
+   | CSV file | `file` | `parse_csv!` + positional mapping |
+   | plain text / key-value | `file` | `parse_regex!` / `parse_grok!` first |
+   | stdout only | `docker_logs` | parse line + remap |
+   | sqlite / binary DB | — | sidecar writes JSONL → `file` |
+
+   Fill the standard `meta` keys for each capability the pot has (the table above)
+   so it lands in every cross-cutting dashboard with zero dashboard edits.
+
+**Checklist additions for a wrapped pot:**
+- [ ] Choose Mode A or Mode B — document in CLAUDE.md
+- [ ] `deploy/<svc>/Dockerfile` **only if Mode B**
+- [ ] Upstream config file if needed, mounted read-only, log paths → your volume
+- [ ] Capture-writer sidecar **only if** upstream captures binaries
+
+**Reference implementation:** `honey-pots/heralding/` — Mode B wrap of
+`heralding==1.0.7` (PyPI), CSV log adapter.

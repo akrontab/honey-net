@@ -1,0 +1,45 @@
+services:
+  heralding:
+    build:
+      context: ./heralding
+    container_name: heralding
+    restart: unless-stopped
+    # network_mode: host puts heralding directly in rootlesskit's network namespace,
+    # preserving real attacker src_ip via the pasta port driver — same pattern as Cowrie.
+    # ports: and networks: are incompatible with network_mode: host.
+    # Vector reads logs via shared volume only — no inter-container networking needed.
+    network_mode: host
+    volumes:
+      - ./heralding.yml:/etc/heralding/heralding.yml:ro
+      - ./volumes/logs:/logs
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+  vector:
+    image: timberio/vector:0.42.0-alpine
+    container_name: vector
+    restart: unless-stopped
+    user: root
+    command: ["--config", "/etc/vector/vector.toml"]
+    volumes:
+      - ./volumes/logs:/logs/heralding:ro
+      - /var/log:/hostlogs:ro
+      - ./vector/vector.toml:/etc/vector/vector.toml:ro
+      - vector-data:/vector-data
+    environment:
+      - LOKI_HOST=${LOKI_HOST}
+      - HOSTNAME=${HONEYPOT_HOSTNAME:-heralding-honeypot}
+    networks:
+      - honeypot
+
+volumes:
+  vector-data:
+
+networks:
+  honeypot:
+    driver: bridge

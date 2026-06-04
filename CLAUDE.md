@@ -54,7 +54,7 @@ The port boundary is the seam: provision runs over :22 (box not yet hardened); a
 
 | Path | Purpose | Docs |
 |------|---------|------|
-| `honey-pots/` | Honeypot packages (Cowrie, MySQL, Dionaea) | `honey-pots/CLAUDE.md` |
+| `honey-pots/` | Honeypot packages (Cowrie, MySQL, SMB, FTP, HTTP, Heralding*) | `honey-pots/CLAUDE.md` |
 | `addons/` | Sidecars (metadata extraction, malware submission) | `addons/CLAUDE.md` |
 | `malware-catalog/` | Sample catalog API, enrichment workers, web UI | `malware-catalog/CLAUDE.md` |
 | `server-config/` | Shared host hardening (UFW, SSH, fail2ban) | `server-config/CLAUDE.md` |
