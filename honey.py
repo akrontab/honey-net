@@ -91,54 +91,84 @@ def _gen_key_args():
     return ["--ephemeral"] if eph else []
 
 # (name, module, description, interactive-args-fn-or-None)
-COMMANDS = [
-    ("provision",    "provision",    "End-to-end provisioning: terraform + server setup", _provision_args),
-    ("deprovision",  "deprovision",  "Destroy one server's VM, clean Tailscale, clear state", None),
-    ("redeploy",     "redeploy",     "Update a live server (port 65022, Tailscale)",  None),
-    ("reconfigure",  "reconfigure",  "Re-apply host hardening config to a live server", None),
-    ("connect",    "connect",        "Open an SSH session to a server",               _connect_args),
-    ("sync",       "sync_ips",       "Sync IPs from Terraform + Tailscale to state.json", None),
-    ("logs",       "get_logs",       "Pull logs from a honeypot server",              None),
-    ("backup",     "backup",         "Back up logs, inbox, and malware catalog",       None),
-    ("restore",    "restore",        "Restore a backup to the live network",           None),
-    ("gen-key",    "gen_ts_key",     "Generate a Tailscale auth key",                 _gen_key_args),
-    ("check-keys",  "check_ssh_keys", "Check SSH keys in honey-net.json; generate missing",  None),
-    ("check-logs",  "check_logs",     "Check log stream freshness in Loki",                  None),
-    ("check-disk",  "check_disk",     "Check disk usage on all servers (25 GB Nanode limit)", None),
-    ("test-loki",   "test_loki",      "Push a test log to Loki to verify the stack",         None),
-    ("test",        "test_honeypot",  "Run smoke tests for a honeypot from this machine",     None),
-    ("ts-cleanup",  "ts_cleanup",     "Remove stale Tailscale nodes not in Terraform state",  None),
-    ("teardown",    "teardown",       "Destroy VMs (terraform), clean Tailscale, clear state", None),
-    ("deploy-detector", "deploy_detector", "Deploy alerting detector to log-stack",            None),
+GROUPS = [
+    ("Deploy", [
+        ("provision",    "provision",    "End-to-end provisioning: terraform + server setup", _provision_args),
+        ("deprovision",  "deprovision",  "Destroy one server's VM, clean Tailscale, clear state", None),
+        ("redeploy",     "redeploy",     "Update a live server (port 65022, Tailscale)",  None),
+        ("reconfigure",  "reconfigure",  "Re-apply host hardening config to a live server", None),
+        ("teardown",     "teardown",     "Destroy VMs (terraform), clean Tailscale, clear state", None),
+    ]),
+    ("Ops", [
+        ("connect",   "connect",   "Open an SSH session to a server",               _connect_args),
+        ("sync",      "sync_ips",  "Sync IPs from Terraform + Tailscale to state.json", None),
+        ("logs",      "get_logs",  "Pull logs from a honeypot server",              None),
+        ("backup",    "backup",    "Back up logs, inbox, and malware catalog",       None),
+        ("restore",   "restore",   "Restore a backup to the live network",           None),
+    ]),
+    ("Admin", [
+        ("gen-key",        "gen_ts_key",       "Generate a Tailscale auth key",                  _gen_key_args),
+        ("check-keys",     "check_ssh_keys",   "Check SSH keys in honey-net.json; generate missing", None),
+        ("check-logs",     "check_logs",       "Check log stream freshness in Loki",             None),
+        ("check-disk",     "check_disk",       "Check disk usage on all servers (25 GB Nanode limit)", None),
+        ("test-loki",      "test_loki",        "Push a test log to Loki to verify the stack",    None),
+        ("test",           "test_honeypot",    "Run smoke tests for a honeypot from this machine", None),
+        ("ts-cleanup",     "ts_cleanup",       "Remove stale Tailscale nodes not in Terraform state", None),
+        ("deploy-detector","deploy_detector",  "Deploy alerting detector to log-stack",           None),
+    ]),
 ]
 
-_CMD_MAP = {name: (module, desc, fn) for name, module, desc, fn in COMMANDS}
+_CMD_MAP = {name: (module, desc, fn)
+            for _, cmds in GROUPS
+            for name, module, desc, fn in cmds}
 
 def usage():
-    print(f"Usage: python honey.py <command> [args...]\n")
-    print("Commands:")
-    width = max(len(name) for name, *_ in COMMANDS)
-    for name, _, desc, *__ in COMMANDS:
-        print(f"  {name:<{width}}  {desc}")
-    print("\nPass --help to any command for its options.")
+    print("Usage: python honey.py <command> [args...]\n")
+    for group_name, cmds in GROUPS:
+        print(f"{group_name}:")
+        width = max(len(name) for name, *_ in cmds)
+        for name, _, desc, *__ in cmds:
+            print(f"  {name:<{width}}  {desc}")
+        print()
+    print("Pass --help to any command for its options.")
+
+def _submenu(group_name, cmds):
+    """Show commands in a group; return the chosen command name or None."""
+    print(f"\n  {_bold(group_name)}\n")
+    width = max(len(name) for name, *_ in cmds)
+    for i, (name, _, desc, *__) in enumerate(cmds, 1):
+        print(f"  {_cyan(str(i))}  {_bold(name):<{width + 9}}  {_dim(desc)}")
+    print(f"  {_cyan('b')}  back\n")
+    try:
+        choice = input("  Select: ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        sys.exit(0)
+    if choice in ("b", "back"):
+        return None
+    if choice.isdigit() and 1 <= int(choice) <= len(cmds):
+        return cmds[int(choice) - 1][0]
+    print("  Invalid selection.", file=sys.stderr)
+    return None
 
 def menu():
-    print(f"\n{_bold('Honey-Net')}\n")
-    width = max(len(name) for name, *_ in COMMANDS)
-    for i, (name, _, desc, *__) in enumerate(COMMANDS, 1):
-        print(f"  {_cyan(str(i))}  {_bold(name):<{width + 9}}  {_dim(desc)}")
+    """Show the top-level group menu; return a command name or None to loop."""
+    print(f"\n  {_bold('Honey-Net')}\n")
+    for i, (group_name, _) in enumerate(GROUPS, 1):
+        print(f"  {_cyan(str(i))}  {group_name}")
     print(f"  {_cyan('q')}  quit\n")
     try:
-        choice = input("Select: ").strip().lower()
+        choice = input("  Select: ").strip().lower()
     except (EOFError, KeyboardInterrupt):
         print()
         sys.exit(0)
     if choice in ("q", "quit", "exit"):
         sys.exit(0)
-    if not choice.isdigit() or not (1 <= int(choice) <= len(COMMANDS)):
-        print("Invalid selection.\n", file=sys.stderr)
-        return None
-    return COMMANDS[int(choice) - 1][0]
+    if choice.isdigit() and 1 <= int(choice) <= len(GROUPS):
+        group_name, cmds = GROUPS[int(choice) - 1]
+        return _submenu(group_name, cmds)
+    print("  Invalid selection.", file=sys.stderr)
+    return None
 
 def dispatch(cmd):
     module, _, args_fn = _CMD_MAP[cmd]
