@@ -79,6 +79,13 @@ deployment-plan               (Operational maturity — the change-delivery patt
   pairs    ↔ incident-response        (soft: intentional push ↔ unintentional recovery / self-healing)
   uses     → multi-operator           (soft: supplies live-config delivery for operator-set changes)
   feeds    → alerting                 (soft: secret-push path for Phase 2 channel tokens)
+  enables  → reconfigure              (its Phase 2 graduated into a child plan)
+
+reconfigure-plan              (Operational maturity — graduated out of deployment-plan Phase 2)
+  after    → deployment-plan          (implements Phase 2; the Phase 1 pattern is already shipped)
+  feeds    → deployment-plan          (Phase 4 verification gate consumes its composer tests + live path)
+  feeds    → multi-operator           (soft: live-config delivery mechanism for operator-set changes, gap 7)
+  pairs    ↔ secrets-management       (soft: borders gap 6 — secret/.env push kept deliberately separate)
 ```
 
 ## Dependency table
@@ -98,7 +105,8 @@ Update the status when a plan graduates to `BACKLOG.md` or ships.
 | **multi-operator-plan.md** | `draft` · build-at-trigger (2nd operator joins) | Reach & multi-operator | — | incident-response (delivers the rotatable anchor) | aws-eks-migration-plan (per-provider break-glass) |
 | **incident-response-plan.md** | `draft` · blocked on multi-operator | Trust & audit + Operational maturity | multi-operator (single rotatable anchor) | — | operationalizing-intel (alerting/self-healing); aws-eks (break-glass console) |
 | **aws-eks-migration-plan.md** | `shelved` · "Maybe" (argues against itself) | Cloud portability | — | — | multi-operator (break-glass differs per provider). A "Maybe" — see plan's own recommendation against it on cost grounds. |
-| **deployment-plan.md** | `building` · Phase 1 shipped (pattern in root `CLAUDE.md`); Phases 2–5 build-at-trigger | Operational maturity | — *(cross-cutting; every plan's changes ride it)* | — | incident-response (intentional push ⇄ recovery/self-healing); multi-operator (delivers live-config for operator-set); alerting (secret-push for Phase 2 tokens); secrets-management thread (gap 6 forcing function) |
+| **deployment-plan.md** | `building` · Phase 1 shipped (pattern in root `CLAUDE.md`); Phases 2–5 build-at-trigger | Operational maturity | — *(cross-cutting; every plan's changes ride it)* | reconfigure (Phase 2 graduated into a child plan) | incident-response (intentional push ⇄ recovery/self-healing); multi-operator (delivers live-config for operator-set); alerting (secret-push for Phase 2 tokens); secrets-management thread (gap 6 forcing function) |
+| **reconfigure-plan.md** | `draft` · port composer + live host-config path, built as one effort | Operational maturity | — *(after deployment-plan Phase 1 pattern, already shipped)* | — | deployment-plan (implements Phase 2; Phase 4 gate consumes ⇄); multi-operator (live-config delivery for operator-set, gap 7); secrets-management (borders gap 6, kept separate); `!TESTING` (port composer = anchor for the offline tier-1/2 suite) |
 
 ## Recommended build order
 
@@ -125,13 +133,10 @@ Respecting the hard edges, the near-term path is:
 3. **`malware-catalog/PLAN.md`** — independent; can advance anytime. Its Phase 1
    enrichment (family / IOCs / imphash) should land *before* operationalizing's
    campaign L2/L3, which consumes those selectors.
-4. **`malware-catalog/PLAN.md`** — independent; can advance anytime. Its Phase 1
-   enrichment (family / IOCs / imphash) should land *before* operationalizing's
-   campaign L2/L3, which consumes those selectors.
-5. **`multi-operator-plan.md` → `incident-response-plan.md`** — gated by the
+4. **`multi-operator-plan.md` → `incident-response-plan.md`** — gated by the
    multi-operator build trigger (a second operator actually joins). The anchor it
    delivers is a precondition for the incident-response rotation runbook.
-6. **`aws-eks-migration-plan.md`** — conditional. Only if honey-net becomes a
+5. **`aws-eks-migration-plan.md`** — conditional. Only if honey-net becomes a
    multi-region research platform; the plan itself argues against it for a
    small fleet.
 
@@ -141,11 +146,18 @@ Some concerns recur across plans and have no dedicated plan file yet:
 
 - **Secrets management** (Trust & audit theme) — first forced by outbound write
   credentials: alerting's notification-channel tokens (Telegram/Discord) and
-  operationalizing-intel's publishing keys (ThreatFox / MalwareBazaar). May graduate
-  to its own plan when that work starts.
+  operationalizing-intel's publishing keys (ThreatFox / MalwareBazaar). reconfigure-plan
+  deliberately excludes secret/`.env` push (gap 6) so a config push can't clobber a
+  secret — filling that boundary is this thread's to own. May graduate to its own plan
+  when that work starts.
+- **Testing** (Operational maturity theme) — now has a strategy doc, `docs/!TESTING.md`:
+  the test tiers (offline unit/contract → live smoke/operational → integration),
+  coverage map, and conventions. deployment-plan Phase 4 (verification gate) and Phase 5
+  (CI) execute it; reconfigure-plan's port composer is the anchor for the first offline
+  tier. A cross-cutting strategy like `!DESIGN` / `!DEPENDENCIES`, not a plan node.
 - **Self-describing package model** (`docs/!DESIGN.md`) — the invariant that
-  normalized-schema, http-honeypot, and malware-catalog all build on; new pots
-  add no control-plane changes.
+  normalized-schema, http-honeypot, malware-catalog, and now reconfigure (declarative
+  `package.toml`) all build on; new pots add no control-plane changes.
 - **Alerting** — **now its own plan**, `docs/alerting-plan.md` (graduated out of
   operationalizing-intel). Build it once there; incident-response and the dashboard
   Triage tier consume it.

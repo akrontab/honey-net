@@ -178,7 +178,9 @@ The pattern's "prove it worked" half, phased after the push paths exist:
 2. **(Trigger) Live host-config path** — modularize `setup.sh`/`fragment.sh` into
    first-boot vs. idempotent-config steps + a `reconfigure.py` over :65022 (gap 5).
    Trigger: the first time a hardening conf or new honeypot port must reach a live
-   box without a reprovision.
+   box without a reprovision. **Planned in `docs/reconfigure-plan.md`** — which also
+   folds in a structured port composer (declarative `package.toml` + collision
+   detection) as the clean foundation the reconcile builds on.
 3. **(Trigger) Secret / `.env` push** — guarded `.env`-only push over :65022
    (gap 6). Trigger: alerting Phase 2 tokens, or the first key rotation. Coordinates
    with the secrets-management thread.
@@ -220,7 +222,7 @@ fire.
 - [x] Phase 1 — surface model + change taxonomy + A/B runbooks, in the root
       `CLAUDE.md` ("Deployment" section)
 - [ ] (Trigger) Phase 2 — `reconfigure.py` + idempotent `setup.sh`/`fragment.sh`
-      split (gap 5)
+      split (gap 5) + structured port composer — see `docs/reconfigure-plan.md`
 - [ ] (Trigger) Phase 3 — guarded `.env`/secret push (gap 6)
 - [ ] Phase 4 — post-deploy verification gate + rollback + `--dry-run` on live paths
 - [ ] (Build-at-trigger) Phase 5 — CI gate + self-healing (defers to Operational
