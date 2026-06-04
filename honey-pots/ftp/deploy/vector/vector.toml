@@ -22,8 +22,6 @@ read_from = "beginning"
 # Normalised cross-honeypot event stream. Raw FTP events continue to ship
 # untouched via [sinks.loki_ftp]; this transform produces a parallel stream
 # under {job="events", honeypot="ftp"}.
-# password is plaintext — pyftpdlib receives the password before auth,
-# and HoneypotAuthorizer accepts everything so we always capture it.
 [transforms.ftp_events]
 type = "remap"
 inputs = ["ftp"]
@@ -33,10 +31,30 @@ raw = parse_json!(string!(.message))
 event_type_map = {
   "connection":  "connect",
   "credentials": "login",
+  "file_upload": "download",
+  "session_end": "session_end",
 }
 
 event_type, _ = get(event_type_map, [string!(raw.type)])
 if event_type == null { abort }
+
+# Field names differ by event type.
+username = if raw.type == "credentials" { raw.login } else { raw.username ?? null }
+password = if raw.type == "credentials" { raw.password } else { null }
+
+meta = {}
+if event_type == "login" {
+  meta = {
+    "login_success": true,
+    "auth_method":   "password",
+  }
+} else if event_type == "download" {
+  meta = {
+    "url":         null,
+    "dl_host":     null,
+    "dl_filename": raw.filename,
+  }
+}
 
 . = {
   "timestamp":     raw.timestamp,
@@ -44,12 +62,13 @@ if event_type == null { abort }
   "protocol":      "ftp",
   "src_ip":        raw.src_host,
   "src_port":      raw.src_port,
-  "session_id":    null,
+  "session_id":    raw.session_id ?? null,
   "event_type":    event_type,
-  "username":      raw.login,
-  "password":      raw.password,
+  "username":      username,
+  "password":      password,
   "payload":       null,
-  "sample_sha256": null,
+  "sample_sha256": if event_type == "download" { raw.sha256 } else { null },
+  "meta":          meta,
 }
 '''
 

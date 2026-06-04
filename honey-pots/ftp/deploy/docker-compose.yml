@@ -6,16 +6,20 @@ services:
     restart: unless-stopped
     ports:
       - "0.0.0.0:21:21"
+      - "0.0.0.0:60000-60010:60000-60010"
     volumes:
       - ./volumes/logs:/logs
+      - ../inbox/ftp:/samples
     environment:
       - FTP_LOG_FILE=/logs/ftp.json
+      - FTP_SAMPLES_DIR=/samples
+      - FTP_PASSIVE_HOST=${FTP_PASSIVE_HOST:-}
     security_opt:
       - no-new-privileges:true
     deploy:
       resources:
         limits:
-          memory: 64M
+          memory: 96M
           cpus: '0.2'
     networks:
       - honeypot
