@@ -5,3 +5,6 @@ backups/
 .claude/
 .venv/
 __pycache__/
+
+# Stray file from Windows MSYS ssh writing UserKnownHostsFile=NUL as a literal file
+NUL
