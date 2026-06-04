@@ -270,11 +270,13 @@ class Handler(BaseHTTPRequestHandler):
                     fh.write(data)
             # Provenance sidecar consumed by the metadata addon.
             with open(dest + ".capture.json", "w", encoding="utf-8") as fh:
+                _tls = getattr(self.server, 'tls', False)
                 json.dump({
                     "src_ip":      self._src_ip(),
-                    "url":         f"{self.headers.get('Host', '')}{path}",
+                    "url":         f"{'https' if _tls else 'http'}://{self.headers.get('Host', '')}{path}",
                     "session_id":  self.session_id,
                     "captured_at": _ts(),
+                    "protocol":    "https" if _tls else "http",
                 }, fh)
         except OSError:
             pass
@@ -318,6 +320,7 @@ def _make_tls_server() -> ThreadingHTTPServer:
     ctx.load_cert_chain(certfile=TLS_CERT, keyfile=TLS_KEY)
     srv = ThreadingHTTPServer(("0.0.0.0", TLS_PORT), Handler)
     srv.socket = ctx.wrap_socket(srv.socket, server_side=True)
+    srv.tls = True
     return srv
 
 

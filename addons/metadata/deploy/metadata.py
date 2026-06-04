@@ -117,6 +117,7 @@ def _process(binary: Path, honeypot: str) -> None:
             "src_ip":        capture.get("src_ip"),
             "url":           capture.get("url"),
             "session_id":    capture.get("session_id"),
+            "protocol":      capture.get("protocol"),
         }),
         encoding="utf-8",
     )

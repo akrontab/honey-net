@@ -45,12 +45,23 @@ def main() -> None:
         flush=True,
     )
 
+    session_protocols: dict[str, str] = {}
+
     for line in _tail(COWRIE_LOG):
         try:
             event = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if event.get("eventid") != "cowrie.session.file_download":
+
+        eventid = event.get("eventid", "")
+
+        if eventid == "cowrie.session.connect":
+            sid = event.get("session")
+            if sid and event.get("protocol"):
+                session_protocols[sid] = event["protocol"]
+            continue
+
+        if eventid != "cowrie.session.file_download":
             continue
 
         outfile  = event.get("outfile") or ""
@@ -58,14 +69,16 @@ def main() -> None:
         if not basename:
             continue
 
+        sid = event.get("session")
         sidecar = SAMPLES_DIR / f"{basename}.capture.json"
         try:
             sidecar.write_text(
                 json.dumps({
                     "src_ip":      event.get("src_ip"),
                     "url":         event.get("url"),
-                    "session_id":  event.get("session"),
+                    "session_id":  sid,
                     "captured_at": event.get("timestamp"),
+                    "protocol":    session_protocols.get(sid),
                 }),
                 encoding="utf-8",
             )
