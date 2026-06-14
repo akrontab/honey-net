@@ -10,7 +10,12 @@
   "timezone": "browser",
   "graphTooltip": 1,
   "tags": ["hunt", "events", "downloads", "infrastructure", "malware"],
-  "links": [],
+  "links": [
+    {"type": "link", "title": "← Triage / Overview", "url": "/d/triage-overview", "tooltip": "Situational overview", "targetBlank": false, "keepTime": true, "includeVars": false},
+    {"type": "link", "title": "Attacker Profile", "url": "/d/hunt-attacker-profile", "tooltip": "Per-IP cross-surface investigation", "targetBlank": false, "keepTime": true, "includeVars": false},
+    {"type": "link", "title": "Credential Intel", "url": "/d/hunt-credential-intel", "tooltip": "Cross-protocol credential spray analysis", "targetBlank": false, "keepTime": true, "includeVars": false},
+    {"type": "link", "title": "Campaign Pivot", "url": "/d/hunt-campaign-pivot", "tooltip": "Co-occurrence pivot on download hosts", "targetBlank": false, "keepTime": true, "includeVars": false}
+  ],
   "annotations": {"list": []},
   "templating": {
     "list": [
@@ -243,7 +248,12 @@
       "datasource": {"type": "loki", "uid": "loki"},
       "fieldConfig": {
         "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Download Host"},
+            "properties": [{"id": "links", "value": [{"title": "Campaign Pivot", "url": "/d/hunt-campaign-pivot?var-dl_host=${__value.text}&${__url_time_range}", "targetBlank": false}]}]
+          }
+        ]
       },
       "options": {
         "cellHeight": "sm",
@@ -296,12 +306,17 @@
       "id": 9,
       "type": "table",
       "title": "Top Downloading IPs",
-      "description": "Attackers that triggered the most download events. Copy an IP into Attacker Profile to see their full session.",
+      "description": "Attackers that triggered the most download events. Click an IP to open Attacker Profile.",
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 23},
       "datasource": {"type": "loki", "uid": "loki"},
       "fieldConfig": {
         "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Source IP"},
+            "properties": [{"id": "links", "value": [{"title": "Attacker Profile", "url": "/d/hunt-attacker-profile?var-src_ip=${__value.text}&${__url_time_range}", "targetBlank": false}]}]
+          }
+        ]
       },
       "options": {
         "cellHeight": "sm",

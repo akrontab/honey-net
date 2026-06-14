@@ -19,6 +19,27 @@ Docker modifies iptables directly and bypasses UFW. Grafana (3000) and Loki (310
 
 The `{job="events"}` stream is produced by per-honeypot VRL transforms — see `honey-pots/CLAUDE.md` for the unified schema and `honey-pots/<name>/CLAUDE.md` for field mappings.
 
+## Dashboard contract
+
+Dashboards live under `deploy/grafana/provisioning/dashboards/` in a **four-folder taxonomy**:
+
+| Folder | Purpose | Stream |
+|---|---|---|
+| `Triage/` | Situational awareness — what's happening now | `{job="events"}` only |
+| `Hunt/` | Attacker investigation — campaigns, credentials, downloads, sessions | `{job="events"}` only |
+| `Operate/` | Fleet and pipeline health | `{job="events"}` + host logs |
+| `Deep-dives/` | Per-protocol forensics | raw `{job="<honeypot>"}` |
+
+**The hard rule:** Triage / Hunt / Operate boards query `{job="events"}` only — never raw `eventid`. Deep-dives are where raw stream detail belongs.
+
+**`foldersFromFilesStructure: true`** is set in `dashboards.yml` so subdirectory names become Grafana folders automatically.
+
+**Navigation links** in the `links` array of each workflow-tier board connect: Triage → Hunt/Operate, Hunt boards → each other, Hunt/attacker-profile → all Deep-dives.
+
+**Panel data links** carry clicked values into other dashboards: "Source IP" cells link to `hunt-attacker-profile?var-src_ip=…`; "Download Host" cells link to `hunt-campaign-pivot?var-dl_host=…`.
+
+A new honeypot that fills the `{job="events"}` contract appears in every Triage/Hunt/Operate board with zero dashboard edits. Add a Deep-dive only for per-protocol raw detail.
+
 ## Gotchas
 
 ### `.env` is not deployed by provision.py — intentional

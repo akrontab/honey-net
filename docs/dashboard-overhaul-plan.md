@@ -163,6 +163,6 @@ wait on that spike.
 - [x] Hunt / Campaign pivot — `Hunt/campaign-pivot.json` (uid `hunt-campaign-pivot`); co-occurrence pivot on `meta_dl_host` × `src_ip`. *Built + JSON-validated; pending live verification.*
 - [x] Hunt / Attacker profile — `Hunt/attacker-profile.json` (uid `hunt-attacker-profile`); per-IP cross-surface investigation replacing `attacker-drilldown`. *Built + JSON-validated; pending live verification.*
 - [ ] Hunt / Event-timeline session replay (with `operationalizing-intel`) — `session_id`-keyed replay board; deferred, coordinates with `operationalizing-intel-plan.md`.
-- [ ] Per-protocol deep-dives (Cowrie, MySQL, Dionaea, HTTP) + drill-down data links
+- [x] Per-protocol deep-dives (Cowrie, MySQL, Dionaea/SMB-FTP, HTTP) + drill-down data links — `Deep-dives/smb-ftp.json` (uid `smb-ftp-deep-dive`) built; cowrie/mysql/http boards already present; "Source IP" data links → `hunt-attacker-profile`, "Download Host" data links → `hunt-campaign-pivot`; nav `links` wired into Triage + all Hunt boards. *Built; pending live verification.*
+- [x] Deprecate superseded dashboards; dashboard contract added to `honey-pots/CLAUDE.md` + `log-stack/CLAUDE.md` — `session-analysis.json` and `attacker-drilldown.json` deleted (both replaced by `Hunt/attacker-profile`); dashboard contract (folder taxonomy, hard rule, nav/data links) added to `log-stack/CLAUDE.md`; new-pot checklist updated in `honey-pots/CLAUDE.md`.
 - [ ] (Q5) protocol-filtered tile + telnet protocol view + fingerprint panels
-- [ ] Deprecate superseded dashboards; dashboard contract added to `honey-pots/CLAUDE.md` + `log-stack/CLAUDE.md`

@@ -10,7 +10,13 @@
   "timezone": "browser",
   "graphTooltip": 1,
   "tags": ["triage", "events", "overview"],
-  "links": [],
+  "links": [
+    {"type": "link", "title": "Hunt / Attacker Profile", "url": "/d/hunt-attacker-profile", "tooltip": "Investigate a specific attacker IP", "targetBlank": false, "keepTime": true, "includeVars": false},
+    {"type": "link", "title": "Hunt / Credential Intel", "url": "/d/hunt-credential-intel", "tooltip": "Cross-protocol credential spray analysis", "targetBlank": false, "keepTime": true, "includeVars": false},
+    {"type": "link", "title": "Hunt / Download & Infra Intel", "url": "/d/hunt-download-infra", "tooltip": "C2 infrastructure and payload analysis", "targetBlank": false, "keepTime": true, "includeVars": false},
+    {"type": "link", "title": "Hunt / Campaign Pivot", "url": "/d/hunt-campaign-pivot", "tooltip": "Co-occurrence pivot on download hosts", "targetBlank": false, "keepTime": true, "includeVars": false},
+    {"type": "link", "title": "Operate / Fleet Health", "url": "/d/operate-fleet-health", "tooltip": "Sensor health per (honeypot, host)", "targetBlank": false, "keepTime": true, "includeVars": false}
+  ],
   "annotations": {"list": []},
   "templating": {
     "list": [
@@ -273,7 +279,12 @@
       "datasource": {"type": "loki", "uid": "loki"},
       "fieldConfig": {
         "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Source IP"},
+            "properties": [{"id": "links", "value": [{"title": "Attacker Profile", "url": "/d/hunt-attacker-profile?var-src_ip=${__value.text}&${__url_time_range}", "targetBlank": false}]}]
+          }
+        ]
       },
       "options": {
         "cellHeight": "sm",

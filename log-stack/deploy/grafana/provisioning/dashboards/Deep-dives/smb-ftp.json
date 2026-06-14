@@ -1,0 +1,368 @@
+{
+  "title": "Deep-dives / SMB+FTP",
+  "uid": "smb-ftp-deep-dive",
+  "description": "Per-protocol raw view for the SMB/CIFS and FTP honeypots co-deployed on smb-ftp. SMB captures NTLMv2 credential hashes; FTP captures plaintext credentials and file uploads. For cross-honeypot credential analysis use Hunt / Credential Intel.",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {"from": "now-24h", "to": "now"},
+  "timepicker": {},
+  "refresh": "1m",
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "tags": ["honeypot", "smb", "ftp", "deep-dive"],
+  "links": [],
+  "annotations": {"list": []},
+  "templating": {
+    "list": [
+      {
+        "name": "host",
+        "label": "Sensor host",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "loki"},
+        "query": "label_values({job=\"smb\"}, host)",
+        "definition": "label_values({job=\"smb\"}, host)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "sort": 1,
+        "current": {"selected": false, "text": "All", "value": "$__all"}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "SMB Connections",
+      "description": "TCP connections received on ports 139 / 445",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "blue"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"smb\", host=~\"$host\"} | json | type=\"connection\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "FTP Sessions",
+      "description": "TCP connections received on port 21",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "green"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"ftp\", host=~\"$host\"} | json | type=\"connection\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Unique Attacker IPs",
+      "description": "Distinct source IPs across SMB and FTP",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "red"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "count(sum by (src_host) (count_over_time({job=~\"smb|ftp\", host=~\"$host\"} | json [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "FTP Uploads",
+      "description": "Files deposited via STOR — potential malware drops picked up by the metadata addon",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "purple"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "purple", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "sum(count_over_time({job=\"ftp\", host=~\"$host\"} | json | type=\"file_upload\" [$__range]))",
+        "instant": true,
+        "queryType": "instant",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Connection Rate — SMB vs FTP",
+      "description": "New TCP connections per interval. Compare volumes to see which surface is being targeted and trace attack waves.",
+      "gridPos": {"h": 9, "w": 16, "x": 0, "y": 4},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {"group": "A", "mode": "none"}
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"calcs": ["max", "sum"], "displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"smb\", host=~\"$host\"} | json | type=\"connection\" [$__interval]))",
+          "legendFormat": "SMB",
+          "queryType": "range",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"ftp\", host=~\"$host\"} | json | type=\"connection\" [$__interval]))",
+          "legendFormat": "FTP",
+          "queryType": "range",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "bargauge",
+      "title": "Credential Attempts by Protocol",
+      "description": "SMB delivers NTLMv2 challenge-response hashes (crack offline with hashcat -m 5600); FTP delivers plaintext passwords. Total auth events per protocol.",
+      "gridPos": {"h": 9, "w": 8, "x": 16, "y": 4},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "showUnfilled": true
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"smb\", host=~\"$host\"} | json | type=\"credentials\" [$__range]))",
+          "legendFormat": "SMB (NTLMv2)",
+          "instant": true,
+          "queryType": "instant",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum(count_over_time({job=\"ftp\", host=~\"$host\"} | json | type=\"credentials\" [$__range]))",
+          "legendFormat": "FTP (plaintext)",
+          "instant": true,
+          "queryType": "instant",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Top Source IPs",
+      "description": "Most active attacker IPs across SMB and FTP combined. Click an IP to open Attacker Profile.",
+      "gridPos": {"h": 10, "w": 8, "x": 0, "y": 13},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Source"},
+            "properties": [{"id": "links", "value": [{"title": "Attacker Profile", "url": "/d/hunt-attacker-profile?var-src_ip=${__value.text}&${__url_time_range}", "targetBlank": false}]}]
+          }
+        ]
+      },
+      "options": {"cellHeight": "sm", "footer": {"show": false}, "showHeader": true, "sortBy": [{"desc": true, "displayName": "Count"}]},
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(25, sum by (src_host) (count_over_time({job=~\"smb|ftp\", host=~\"$host\"} | json [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{src_host}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"src_host": "Source", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Credential Attempts",
+      "description": "Combined credential table across SMB and FTP. SMB passwords are NTLMv2 hashes in hashcat-ready format (user::domain:challenge:proof:blob); FTP passwords are cleartext.",
+      "gridPos": {"h": 10, "w": 8, "x": 8, "y": 13},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {"cellHeight": "sm", "footer": {"show": false}, "showHeader": true, "sortBy": [{"desc": true, "displayName": "Count"}]},
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(50, sum by (login, password, job) (count_over_time({job=~\"smb|ftp\", host=~\"$host\"} | json | type=\"credentials\" | login != \"\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{login}} / {{job}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"login": "Username", "password": "Password / Hash", "job": "Protocol", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "FTP Uploaded Files",
+      "description": "Files deposited via STOR. SHA-256 matches the malware-catalog key — look up the hash there for YARA results and VirusTotal verdicts.",
+      "gridPos": {"h": 10, "w": 8, "x": 16, "y": 13},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "left", "displayMode": "auto", "filterable": true}},
+        "overrides": []
+      },
+      "options": {"cellHeight": "sm", "footer": {"show": false}, "showHeader": true, "sortBy": [{"desc": true, "displayName": "Count"}]},
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "topk(25, sum by (src_host, filename, sha256) (count_over_time({job=\"ftp\", host=~\"$host\"} | json | type=\"file_upload\" [$__range])))",
+        "instant": true,
+        "queryType": "instant",
+        "legendFormat": "{{filename}}",
+        "refId": "A"
+      }],
+      "transformations": [
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"src_host": "Source", "filename": "Filename", "sha256": "SHA-256", "Value #A": "Count"}}}
+      ]
+    },
+    {
+      "id": 10,
+      "type": "logs",
+      "title": "Recent SMB Events",
+      "description": "Raw SMB log stream — connection and credential events from {job=\"smb\"}",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 23},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "{job=\"smb\", host=~\"$host\"} | json",
+        "queryType": "range",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 11,
+      "type": "logs",
+      "title": "Recent FTP Events",
+      "description": "Raw FTP log stream — connection, credentials, file uploads, file retrievals, and session-end events from {job=\"ftp\"}",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 23},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [{
+        "datasource": {"type": "loki", "uid": "loki"},
+        "expr": "{job=\"ftp\", host=~\"$host\"} | json",
+        "queryType": "range",
+        "refId": "A"
+      }]
+    }
+  ]
+}

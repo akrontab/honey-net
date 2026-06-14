@@ -10,7 +10,16 @@
   "timezone": "browser",
   "graphTooltip": 1,
   "tags": ["hunt", "events", "investigation", "attacker"],
-  "links": [],
+  "links": [
+    {"type": "link", "title": "← Triage / Overview", "url": "/d/triage-overview", "tooltip": "Situational overview across all sensors", "targetBlank": false, "keepTime": true, "includeVars": false},
+    {"type": "link", "title": "Credential Intel", "url": "/d/hunt-credential-intel", "tooltip": "Cross-protocol credential spray analysis", "targetBlank": false, "keepTime": true, "includeVars": false},
+    {"type": "link", "title": "Download & Infra Intel", "url": "/d/hunt-download-infra", "tooltip": "C2 infrastructure and payload analysis", "targetBlank": false, "keepTime": true, "includeVars": false},
+    {"type": "link", "title": "Campaign Pivot", "url": "/d/hunt-campaign-pivot", "tooltip": "Co-occurrence pivot on download hosts", "targetBlank": false, "keepTime": true, "includeVars": false},
+    {"type": "link", "title": "Cowrie Deep-dive", "url": "/d/cowrie-overview", "tooltip": "Raw SSH/Telnet event detail", "targetBlank": false, "keepTime": true, "includeVars": false},
+    {"type": "link", "title": "MySQL Deep-dive", "url": "/d/mysql-overview", "tooltip": "Raw MySQL query detail", "targetBlank": false, "keepTime": true, "includeVars": false},
+    {"type": "link", "title": "SMB+FTP Deep-dive", "url": "/d/smb-ftp-deep-dive", "tooltip": "Raw SMB/FTP credential and upload detail", "targetBlank": false, "keepTime": true, "includeVars": false},
+    {"type": "link", "title": "HTTP Deep-dive", "url": "/d/http-overview", "tooltip": "Raw HTTP request and upload detail", "targetBlank": false, "keepTime": true, "includeVars": false}
+  ],
   "annotations": {"list": []},
   "templating": {
     "list": [
