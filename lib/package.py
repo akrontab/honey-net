@@ -58,10 +58,14 @@ def _compose_host_ports(name, base, repo_root=None):
         if not isinstance(svc, dict):
             continue
         for port_spec in svc.get("ports", []):
-            # Handles "0.0.0.0:3306:3306", "3306:3306", "3306"
+            # Handles "0.0.0.0:3306:3306", "3306:3306", "3306", and ranges like "60000-60010:60000-60010"
             parts = str(port_spec).split(":")
-            host_port = int(parts[-2]) if len(parts) >= 2 else int(parts[0])
-            result.add(host_port)
+            host_part = parts[-2] if len(parts) >= 2 else parts[0]
+            if "-" in host_part:
+                lo, hi = host_part.split("-", 1)
+                result.update(range(int(lo), int(hi) + 1))
+            else:
+                result.add(int(host_part))
     return result
 
 
