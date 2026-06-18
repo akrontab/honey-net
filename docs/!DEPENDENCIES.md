@@ -33,6 +33,7 @@ normalized-schema-plan        (keystone — depends on nothing)
   enables  → operationalizing-intel   (hard: its phase 1)
   enables  → dashboard-overhaul       (hard: the meta_* contract it consumes)
   enables  → http-honeypot            (recommended: author into the contract)
+  enables  → canary-credentials       (soft: pubkey-fingerprint replay match; core creds already present)
   pairs    ↔ malware-catalog          (soft: download `meta` ↔ provenance)
 
 operationalizing-intel-plan
@@ -41,6 +42,8 @@ operationalizing-intel-plan
   uses     → malware-catalog          (soft: campaign selectors — family/IOCs/imphash)
   pairs    ↔ dashboard-overhaul       (soft: this owns actions, that owns rendering — pivot/replay/alert-state seam)
   pairs    ↔ incident-response        (soft: alerting, egress/breakout)
+  uses     → high-interaction-pots    (soft: deep sessions feed TTP characterization §3a)
+  pairs    ↔ canary-credentials       (soft: canary replay = campaign-grade signal; bait-fetch→replay join)
 
 dashboard-overhaul-plan       (operationalizing theme — the visualization surface)
   requires → normalized-schema        (hard: consumes the meta_* contract)
@@ -54,14 +57,31 @@ alerting-plan                 (operationalizing theme — graduated out of opera
   pairs    ↔ operationalizing-intel   (soft: campaign-novelty needs its correlation; digest = digest-tier sink)
   pairs    ↔ dashboard-overhaul       (soft: P1 detection dashboard → Triage tier)
   pairs    ↔ incident-response        (soft: security-model violations / honeypot-egress capture gap)
+  pairs    ↔ canary-credentials       (soft: hosts the deception-tripwire rule class)
+  pairs    ↔ high-interaction-pots    (soft: its Phase 2 egress capture lands the deferred breakout rule)
 
 http-honeypot-plan
   after    → normalized-schema        (recommended: built into the generalized contract)
   feeds    → malware-catalog          (soft: supplies uploaded samples)
+  pairs    ↔ canary-credentials       (soft: _BAIT is the first planting site)
+
+canary-credentials-plan       (Detection & intel depth — deception/honeytokens)
+  after    → normalized-schema        (soft: replay match reads core creds; pubkey match blocked on its Q5)
+  uses     → malware-catalog          (soft: canary registry table, colocated with the first-seen novelty registry)
+  pairs    ↔ alerting                 (soft: deception-tripwire = a new rule class on its {job="detections"} contract)
+  pairs    ↔ operationalizing-intel   (soft: canary replay = campaign-grade signal; bait-fetch→replay join)
+  pairs    ↔ http-honeypot            (soft: _BAIT is the first planting site + registry producer)
+
+high-interaction-pots-plan    (Detection & intel depth — interaction depth, not breadth)
+  feeds    → operationalizing-intel   (soft: deep sessions = richest TTP-characterization + TTY-replay input)
+  pairs    ↔ alerting                 (soft: Phase 2 egress capture lands the deferred honeypot-egress breakout rule)
+  pairs    ↔ incident-response        (soft: breakout expected here; egress/response overlap)
+  pairs    ↔ aws-eks-migration-plan   (soft: VM-vs-orchestration isolation trade-off informs isolation tech)
 
 malware-catalog/PLAN          (mostly standalone — depends on nothing)
   enables  → operationalizing-intel   (soft: campaign L2/L3 selectors)
   pairs    ↔ http-honeypot            (soft: consumes its samples)
+  feeds    → canary-credentials       (soft: hosts the canary registry table)
 
 multi-operator-plan           (depends on nothing)
   enables  → incident-response        (hard: delivers the single rotatable anchor)
@@ -71,9 +91,11 @@ incident-response-plan
   requires → multi-operator           (hard: the single rotatable anchor)
   pairs    ↔ operationalizing-intel   (soft: alerting / self-healing)
   pairs    ↔ aws-eks-migration-plan   (soft: break-glass console differs per provider)
+  pairs    ↔ high-interaction-pots    (soft: breakout expected here; egress/response overlap)
 
 aws-eks-migration-plan        (standalone "Maybe" — depends on nothing)
   pairs    ↔ multi-operator           (soft: break-glass)
+  pairs    ↔ high-interaction-pots    (soft: isolation trade-off informs isolation tech)
 
 deployment-plan               (Operational maturity — the change-delivery pattern; cross-cutting)
   pairs    ↔ incident-response        (soft: intentional push ↔ unintentional recovery / self-healing)
@@ -102,6 +124,8 @@ Update the status when a plan graduates to `BACKLOG.md` or ships.
 | **alerting-plan.md** | `building` · Phase 1 live (detector + `{job="detections"}` + Triage detection dashboard on log-stack); Phases 4–7 outstanding | Operationalizing the intel | — *(soft: normalized-schema for `meta_*`)* | — | operationalizing-intel (campaign-novelty needs correlation; digest sink); dashboard-overhaul (detection dashboard → Triage); malware-catalog (novelty registry / family); incident-response (security-model / egress gap) |
 | **http-honeypot-plan.md** | `built` · phases 1–3 on `mysql-ssh`; :443 + dashboard outstanding | Detection & intel depth | — *(strongly: after normalized-schema)* | — | malware-catalog (feeds uploaded samples) |
 | **malware-catalog/PLAN.md** | `building` · see own `PLAN.md` | Detection & intel depth (malware) | — *(mostly standalone)* | operationalizing-intel campaign features | http-honeypot (consumes its samples) |
+| **canary-credentials-plan.md** | `proposed` · within-net replay = no-regret slice; external tokens build-at-trigger | Detection & intel depth (deception) | — *(soft: normalized-schema for pubkey match)* | — | alerting (deception-tripwire rule class ⇄); operationalizing-intel (campaign-grade replay ⇄); http-honeypot (`_BAIT` planting site ⇄); malware-catalog (registry table) |
+| **high-interaction-pots-plan.md** | `proposed` · design-first, gated on containment bar + egress capture | Detection & intel depth (interaction depth) | — *(gated: Phase 1 threat model, Phase 2 egress capture)* | — | operationalizing-intel (feeds deep sessions for TTP §3a); alerting (egress capture → breakout rule); incident-response (breakout expected); aws-eks (isolation trade-off) |
 | **multi-operator-plan.md** | `draft` · build-at-trigger (2nd operator joins) | Reach & multi-operator | — | incident-response (delivers the rotatable anchor) | aws-eks-migration-plan (per-provider break-glass) |
 | **incident-response-plan.md** | `draft` · blocked on multi-operator | Trust & audit + Operational maturity | multi-operator (single rotatable anchor) | — | operationalizing-intel (alerting/self-healing); aws-eks (break-glass console) |
 | **aws-eks-migration-plan.md** | `shelved` · "Maybe" (argues against itself) | Cloud portability | — | — | multi-operator (break-glass differs per provider). A "Maybe" — see plan's own recommendation against it on cost grounds. |
@@ -139,6 +163,11 @@ Respecting the hard edges, the near-term path is:
 5. **`aws-eks-migration-plan.md`** — conditional. Only if honey-net becomes a
    multi-region research platform; the plan itself argues against it for a
    small fleet.
+6. **`canary-credentials-plan.md`** and **`high-interaction-pots-plan.md`** — newer
+   Detection & intel depth threads, both `proposed`. Canary's within-net replay is a
+   no-regret slice that can advance alongside alerting's selector-novelty work;
+   high-interaction is design-first and gated on its containment bar + the shared
+   honeypot-egress capture, so it trails until that lands.
 
 ## Cross-cutting threads (not single plans)
 

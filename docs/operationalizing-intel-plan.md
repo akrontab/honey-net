@@ -159,6 +159,36 @@ co-occurrence. That learning is the *input* to any automated clustering, so:
   connected-components / similarity clustering + novel-campaign alerting. Only
   specifiable *after* L1.
 
+### 3a. TTP characterization — from a cluster to a profile
+
+The campaign ladder (§3) answers *"which observations belong together."* It does
+**not** answer *"what do they do"* — the operator's second goal, attacker-TTP
+detail. A campaign object should carry a **TTP profile**, and that profile has two
+layers, cheapest first:
+
+- **Deterministic ATT&CK mapping (rides on the schema).** A rule table maps
+  observed actions to MITRE ATT&CK techniques and tags events/sessions:
+  `wget|curl` of a binary → **T1105** (Ingress Tool Transfer), appending an SSH key
+  to `authorized_keys` → **T1098.004**, `chmod +x` + exec → **T1059/Execution**,
+  reading a planted `.env` → **T1552.001** (Credentials in Files). Cheap,
+  explainable, no model in the loop — a per-action tag on `{job="events"}` or a
+  column on the L2 session-summary record. The technique-set per campaign *is* a
+  structured TTP fingerprint, and a never-before-seen technique is itself a
+  novelty signal.
+- **LLM narration (Claude).** Feed a session or campaign transcript to Claude for
+  a plain-English TTP narrative, an intent classification, and a **novel-technique
+  flag** ("this doesn't match a known pattern, look at it"). **Haiku 4.5** for
+  cheap per-session triage; **Opus 4.8** for campaign-level synthesis. Output is a
+  primary content source for the digest (§2: "notable sessions / what's new in
+  tradecraft") and an annotation on the L3 campaign object.
+
+**Signal depends on interaction depth.** Low-interaction pots yield thin profiles
+(a request, a dropped file); the rich, multi-step TTP chains that make narration
+worthwhile come from **high-interaction** sessions — see
+`docs/high-interaction-pots-plan.md`, which is the upstream feedstock for this
+layer. Build-at-trigger: deterministic ATT&CK tagging can land with the L2 store;
+LLM narration follows the digest job (§2 / Phase 3), which is its delivery vehicle.
+
 ### 4. Session replay
 
 Two fidelities:
@@ -249,6 +279,9 @@ unrecoverable later (sessions age out of Loki at 30 days). This *is* the L2 join
    worker, opt-in gated, with disclosure policy.
 9. **(Build-at-trigger) Campaign correlator + novel-campaign alerting (L3)** —
    only after L1/L2.
+10. **(Build-at-trigger) TTP characterization (§3a).** Deterministic ATT&CK
+    tagging with the L2 store; Claude-driven narration as a digest content source.
+    Richest once high-interaction sessions exist (`high-interaction-pots-plan.md`).
 
 ## Open questions (resolve before BACKLOG)
 
@@ -265,6 +298,10 @@ unrecoverable later (sessions age out of Loki at 30 days). This *is* the L2 join
    daily vs. weekly.
 5. **Outbound disclosure policy** — which feeds, what's shareable, how to avoid
    re-submitting feed-sourced samples and leaking operator infra.
+6. **TTP characterization split (§3a)** — how much rides on deterministic ATT&CK
+   tagging vs. LLM narration, and whether narration waits on high-interaction
+   sessions to be worth the spend. *Lean: deterministic tagging first (free,
+   explainable); narration when the digest job + deep sessions both exist.*
 
 ## Graduation to BACKLOG
 
@@ -279,3 +316,4 @@ until their build triggers fire.
 - [ ] Phase 5 — add `session_id` + `honeypot` to catalog `sources`; thread through `add_source()` + `metadata` addon
 - [ ] Phase 6 — event-timeline session replay on the drilldown dashboards
 - [ ] (Trigger) session-summary store, outbound publisher, campaign correlator
+- [ ] (Trigger) TTP characterization (§3a) — ATT&CK tagging on the L2 store + Claude narration into the digest

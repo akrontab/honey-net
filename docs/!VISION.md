@@ -52,8 +52,14 @@ in `docs/http-honeypot-plan.md`. The richer normalized schema (lean core +
 governed `meta`) that makes cross-honeypot questions single-expression — and
 de-couples the dashboards from Cowrie — is worked in
 `docs/normalized-schema-plan.md`. Malware-side enrichment has its own plan in
-`malware-catalog/PLAN.md`. New honeypot protocols slot into the self-describing
-package model (`docs/!DESIGN.md`) with no control-plane changes.
+`malware-catalog/PLAN.md`. Two newer threads deepen rather than widen the capture:
+**deception** — planted bait promoted to tracked canary credentials whose reuse is
+itself a detection — in `docs/canary-credentials-plan.md`; and **interaction
+depth** — real, contained environments that elicit full post-exploitation
+tradecraft — in `docs/high-interaction-pots-plan.md` (the interaction-depth axis,
+distinct from the protocol-breadth menu in
+`docs/built-in-honeypot-coverage-plan.md`). New honeypot protocols slot into the
+self-describing package model (`docs/!DESIGN.md`) with no control-plane changes.
 
 ### Reach & multi-operator
 
