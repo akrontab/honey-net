@@ -84,7 +84,11 @@ def main():
         # ── Test 4: Container running ─────────────────────────────────────────
         print("\n[ 4 ] Cowrie container status")
         r = subprocess.run(
-            ssh + ["docker ps --filter name=cowrie --format '{{.Status}}'"],
+            ssh + [
+                "HONEY_UID=$(id -u honey) && "
+                "DOCKER_HOST=unix:///run/user/${HONEY_UID}/docker.sock "
+                "docker ps --filter name=cowrie --format '{{.Status}}'"
+            ],
             capture_output=True, text=True,
         )
         status = r.stdout.strip()
@@ -95,7 +99,7 @@ def main():
 
         # ── Test 5: Log file ──────────────────────────────────────────────────
         print("\n[ 5 ] Cowrie JSON log")
-        log_path  = f"/opt/{name}/cowrie/volumes/var/log/cowrie/cowrie.json"
+        log_path  = f"/opt/{name}/cowrie/volumes/logs/cowrie.json"
         r = subprocess.run(
             ssh + [f"wc -l < {log_path} 2>/dev/null || echo MISSING"],
             capture_output=True, text=True,
@@ -110,9 +114,9 @@ def main():
             for line in r2.stdout.strip().splitlines():
                 info(line)
 
-    print(f"\n{'─' * 36}")
+    print(f"\n{'-' * 36}")
     print(f"  {passed} passed, {failed} failed, {skipped} skipped")
-    print(f"{'─' * 36}")
+    print(f"{'-' * 36}")
     if failed:
         sys.exit(1)
 
