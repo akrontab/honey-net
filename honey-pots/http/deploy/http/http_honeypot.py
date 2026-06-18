@@ -12,8 +12,12 @@ Behaviour:
   * Responds plausibly to common honeytoken probes (.env, .git/config,
     .aws/credentials, ...) to keep scanners engaged.
   * Emits one event per TCP connection (connect / session_end) and one per
-    request. Credential POSTs become `login` events; uploaded request bodies are
-    persisted and become `download` events (a sample was captured).
+    request. Credential POSTs become `login` events; genuine file uploads are
+    persisted and become `download` events (a sample was captured). A POST/PUT
+    body counts as a file only on a positive signal — a multipart part carrying
+    a filename, a Content-Disposition filename, or a known file magic number
+    (incl. script shebang). Everything else is logged as a plain `request`, so
+    non-file bodies (text-only forms, JSON PUTs, ...) never reach the catalog.
 
 Captured uploads are written to SAMPLES_DIR as <sha256> plus a
 <sha256>.capture.json provenance sidecar — the same contract Cowrie's
@@ -58,6 +62,19 @@ _PASS_FIELDS = ("password", "pass", "passwd", "pwd", "pw")
 
 # Endpoints that present (and capture against) a login form.
 _LOGIN_PATHS = ("/login", "/admin", "/admin/login", "/wp-login.php", "/user/login")
+
+# File magic numbers — a raw body matching one of these is captured as a sample
+# regardless of content-type. Kept small and specific to avoid false positives.
+_MAGIC = (
+    b"\x7fELF",             # ELF binary
+    b"MZ",                  # PE / DOS executable
+    b"PK\x03\x04",          # ZIP / JAR / APK / OOXML
+    b"%PDF",                # PDF
+    b"\x1f\x8b",            # GZIP
+    b"Rar!\x1a\x07",        # RAR
+    b"7z\xbc\xaf\x27\x1c",  # 7-Zip
+    b"#!",                  # script shebang (#!/bin/sh, #!/usr/bin/env python, ...)
+)
 
 # Honeytoken responses — plausible bait for common scanner probes. Keys lowercased.
 _BAIT = {
@@ -177,11 +194,12 @@ class Handler(BaseHTTPRequestHandler):
         ua = self.headers.get("User-Agent")
 
         creds = self._extract_creds(body)
+        upload = self._extract_file(body) if self.command in ("POST", "PUT") else None
         if creds:
             self._emit("login", method=self.command, path=path,
                        username=creds[0], password=creds[1], auth_method=creds[2], user_agent=ua)
-        elif body and self.command in ("POST", "PUT") and self._looks_like_upload(body):
-            self._capture_upload(path, body, ua)
+        elif upload:
+            self._capture_upload(path, upload[0], upload[1], ua)
         else:
             self._emit("request", method=self.command, path=path,
                        payload=f"{self.command} {path}", user_agent=ua)
@@ -225,18 +243,16 @@ class Handler(BaseHTTPRequestHandler):
                 return (user, pw, "form")
         return None
 
-    def _looks_like_upload(self, body: bytes) -> bool:
-        ctype = self.headers.get("Content-Type", "").lower()
-        if "multipart/form-data" in ctype:
-            return True
-        if self.command == "PUT":
-            return True
-        if ctype.startswith(("application/octet-stream", "application/x-")):
-            return True
-        return body[:4] == b"\x7fELF" or body[:2] == b"MZ"
-
-    def _extract_upload(self, body: bytes, ctype: str):
-        """Return (filename, filebytes). Best-effort multipart extraction."""
+    def _extract_file(self, body: bytes):
+        """Return (filename, filebytes) only when the body carries a genuine file,
+        else None. A file is recognised by a positive signal — a multipart part
+        with a filename, a Content-Disposition filename, or a known magic number
+        — never by content-type or verb alone. This keeps non-file POST/PUT
+        bodies out of the sample inbox (and therefore out of the catalog)."""
+        if not body:
+            return None
+        ctype = self.headers.get("Content-Type", "")
+        # 1. multipart/form-data — capture the first part with a real filename.
         if "multipart/form-data" in ctype.lower() and "boundary=" in ctype:
             boundary = ctype.split("boundary=", 1)[1].strip().strip('"')
             delim = ("--" + boundary).encode()
@@ -252,15 +268,22 @@ class Handler(BaseHTTPRequestHandler):
                             fname = token.split(b"=", 1)[1].strip().strip(b'"').decode(
                                 "utf-8", "replace")
                     content = content.rsplit(b"\r\n", 1)[0]  # trim CRLF before next boundary
-                    if content:
-                        return (fname or "upload", content)
+                    if fname and content:
+                        return (fname, content)
             except (ValueError, IndexError):
                 pass
-        return (None, body)
+            return None
+        # 2. raw body with an explicit Content-Disposition filename.
+        cd = self.headers.get("Content-Disposition", "")
+        if "filename=" in cd:
+            fname = cd.split("filename=", 1)[1].split(";")[0].strip().strip('"')
+            return (fname or None, body)
+        # 3. raw body whose leading bytes match a known file magic number.
+        if body.startswith(_MAGIC):
+            return (None, body)
+        return None
 
-    def _capture_upload(self, path: str, body: bytes, ua):
-        ctype = self.headers.get("Content-Type", "")
-        filename, data = self._extract_upload(body, ctype)
+    def _capture_upload(self, path: str, filename, data: bytes, ua):
         sha = hashlib.sha256(data).hexdigest()
         try:
             os.makedirs(SAMPLES_DIR, exist_ok=True)

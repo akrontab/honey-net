@@ -36,9 +36,18 @@ to keep scanners engaged. Everything else returns a `404` but is still logged.
 /opt/<server>/inbox/http/                    # captured uploads + .capture.json sidecars
 ```
 
-Uploaded bodies (multipart file parts, `PUT` bodies, `octet-stream`/binary POSTs)
-are written to `/samples` (bind-mounted from the inbox) as `<sha256>`, with a
-`<sha256>.capture.json` sidecar carrying `{src_ip, url, session_id, captured_at}`.
+A POST/PUT body is captured as a sample **only on a positive file signal** — a
+multipart part carrying a `filename=`, a `Content-Disposition: ...; filename=`
+header, or a recognised file magic number (ELF, PE/`MZ`, ZIP/`PK`, PDF, GZIP,
+RAR, 7z, or a `#!` script shebang). Content-type or verb alone never triggers a
+capture, so non-file bodies (text-only multipart forms, JSON `PUT`s, arbitrary
+`octet-stream` text) are logged as `request` events and **never reach the
+catalog**. The trade: a raw-body upload with no filename and no known magic
+(e.g. a text webshell `PUT` with no shebang) is logged but not captured.
+
+Captured files are written to `/samples` (bind-mounted from the inbox) as
+`<sha256>`, with a `<sha256>.capture.json` sidecar carrying
+`{src_ip, url, session_id, captured_at}`.
 The `metadata` addon canonicalises binary + sidecar into `/opt/<server>/inbox/<sha256>`
 + `<sha256>.meta.json` — **the same provenance contract Cowrie uses**, so the
 existing `metadata` + `malware-sender` pipeline picks them up with no changes.
