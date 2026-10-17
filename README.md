@@ -307,3 +307,7 @@ python scripts/sync_ips.py
 4. Run `python honey.py provision --server <name>` — creates the VM via Terraform and runs full setup.
 
 No changes to `terraform/main.tf` or any root script are needed. See `honey-pots/CLAUDE.md` for honeypot package structure.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
