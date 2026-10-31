@@ -32,6 +32,8 @@ python honey.py
 ```
 Select **logs** to pull log files locally. Open Grafana at `http://<log-stack-tailscale-ip>:3000` — raw streams appear under `{job="cowrie"}`, `{job="mysql"}`, `{job="http"}`, `{job="smb"}`, `{job="ftp"}`; the normalised cross-honeypot stream is `{job="events"}`.
 
+Provisioning also writes `backend-services.html` to the repo root, with links to the malware catalog and Grafana. Open it from any machine on the tailnet; run `python honey.py services-page` to regenerate it when IPs change.
+
 ---
 
 ## Architecture
@@ -106,6 +108,7 @@ honey-net/
 │   ├── redeploy.py           ← update a live server (Tailscale, port 65022)
 │   ├── connect.py            ← SSH into a server
 │   ├── sync_ips.py           ← write IPs from Terraform + Tailscale to state.json
+│   ├── services_page.py      ← generate backend-services.html from state.json
 │   ├── get_logs.py           ← pull logs from a honeypot
 │   ├── gen_ts_key.py         ← generate a Tailscale auth key
 │   ├── check_ssh_keys.py     ← check / generate SSH keys for all servers
@@ -283,6 +286,7 @@ python honey.py connect --server log-stack --pre-setup
 python honey.py redeploy --server mysql-ssh
 python honey.py logs --server mysql-ssh
 python honey.py sync
+python honey.py services-page
 python honey.py gen-key --ephemeral
 python honey.py check-keys
 python honey.py check-logs
