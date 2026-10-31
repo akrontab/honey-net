@@ -500,30 +500,33 @@ def main():
     catalog_ip  = state.get("malware-catalog", {}).get("tailscale_ip") or ""
     catalog_url = f"http://{catalog_ip}:8000" if catalog_ip else ""
 
-    for server in ordered:
-        # Re-read state so each iteration sees Tailscale IPs written by the previous server
-        state = json.loads(_STATE_FILE.read_text(encoding="utf-8"))
+    try:
+        for server in ordered:
+            # Re-read state so each iteration sees Tailscale IPs written by the previous server
+            state = json.loads(_STATE_FILE.read_text(encoding="utf-8"))
 
-        ts_ip = _provision(
-            server, state, ts_api_key,
-            grafana_password=grafana_password,
-            loki_host=loki_host,
-            catalog_url=catalog_url,
-            mb_api_key=mb_api_key,
-            vt_api_key=vt_api_key,
-            triage_api_key=triage_api_key,
-            force=args.force,
-        )
+            ts_ip = _provision(
+                server, state, ts_api_key,
+                grafana_password=grafana_password,
+                loki_host=loki_host,
+                catalog_url=catalog_url,
+                mb_api_key=mb_api_key,
+                vt_api_key=vt_api_key,
+                triage_api_key=triage_api_key,
+                force=args.force,
+            )
 
-        if server["name"] == "log-stack" and ts_ip:
-            loki_host = ts_ip
-            print(f"  LOKI_HOST → {loki_host}")
-        if server["name"] == "malware-catalog" and ts_ip:
-            catalog_url = f"http://{ts_ip}:8000"
-            print(f"  CATALOG_URL → {catalog_url}")
+            if server["name"] == "log-stack" and ts_ip:
+                loki_host = ts_ip
+                print(f"  LOKI_HOST → {loki_host}")
+            if server["name"] == "malware-catalog" and ts_ip:
+                catalog_url = f"http://{ts_ip}:8000"
+                print(f"  CATALOG_URL → {catalog_url}")
+    finally:
+        # Also on a mid-run failure, so backends that came up are still linked.
+        print(green(f"\nBackend services page: {write_page().as_uri()}"))
 
-    print(green(f"\nAll {len(ordered)} server(s) provisioned."))
-    print(green(f"Backend services page: {write_page().as_uri()}"))
+    print(green(f"All {len(ordered)} server(s) provisioned."))
 
 
 if __name__ == "__main__":

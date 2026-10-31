@@ -2,6 +2,7 @@
 
 import sys
 from pathlib import Path
+import pytest
 
 # Ensure repo root is on sys.path so scripts.services_page imports correctly.
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -45,3 +46,36 @@ class TestWritePage:
         data = out.read_bytes()
         assert b"http://100.64.0.1:3000" in data
         assert b"\r\n" not in data
+
+
+class TestProvisionWritesPage:
+    def _run_provision(self, tmp_path, monkeypatch, provision_one):
+        from scripts import provision
+
+        (tmp_path / "state.json").write_text("{}", encoding="utf-8")
+        written = []
+        monkeypatch.setattr(provision, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(provision, "_STATE_FILE", tmp_path / "state.json")
+        monkeypatch.setattr(provision, "load_manifest",
+                            lambda: [{"name": "log-stack", "type": "backend"}])
+        monkeypatch.setattr(provision, "_load_ts_api_key", lambda: "key")
+        monkeypatch.setattr(provision.getpass, "getpass", lambda _: "password")
+        monkeypatch.setattr(provision, "_provision", provision_one)
+        monkeypatch.setattr(provision, "write_page",
+                            lambda: written.append(True) or tmp_path / "page.html")
+        monkeypatch.setattr(sys, "argv", ["provision.py", "--skip-terraform"])
+        return provision.main, written
+
+    def test_written_after_success(self, tmp_path, monkeypatch):
+        main, written = self._run_provision(tmp_path, monkeypatch, lambda *a, **k: "100.64.0.1")
+        main()
+        assert written == [True]
+
+    def test_written_when_a_server_fails(self, tmp_path, monkeypatch):
+        def fail(*a, **k):
+            sys.exit("setup.sh failed")
+
+        main, written = self._run_provision(tmp_path, monkeypatch, fail)
+        with pytest.raises(SystemExit):
+            main()
+        assert written == [True]
