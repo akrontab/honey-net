@@ -39,8 +39,9 @@ event_type, _ = get(event_type_map, [string!(raw.type)])
 if event_type == null { abort }
 
 # Field names differ by event type.
-username = if raw.type == "credentials" { raw.login } else { raw.username ?? null }
+username = if raw.type == "credentials" { raw.login } else { raw.username }
 password = if raw.type == "credentials" { raw.password } else { null }
+sample_sha256 = if event_type == "download" { raw.sha256 } else { null }
 
 meta = {}
 if event_type == "login" {
@@ -62,12 +63,12 @@ if event_type == "login" {
   "protocol":      "ftp",
   "src_ip":        raw.src_host,
   "src_port":      raw.src_port,
-  "session_id":    raw.session_id ?? null,
+  "session_id":    raw.session_id,
   "event_type":    event_type,
   "username":      username,
   "password":      password,
   "payload":       null,
-  "sample_sha256": if event_type == "download" { raw.sha256 } else { null },
+  "sample_sha256": sample_sha256,
   "meta":          meta,
 }
 '''

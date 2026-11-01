@@ -77,6 +77,20 @@ class TestPhaseDispatcher:
         fb = self._firstboot_branch(text)
         assert "sshd_move" in fb
 
+    def test_firstboot_moves_sshd_before_configuring_it(self, mysql_ssh_setup):
+        # configure_sshd runs sshd -t and reloads, which need ssh.service running.
+        text, _ = mysql_ssh_setup
+        fb = self._firstboot_branch(text)
+        assert fb.index("sshd_move") < fb.index("configure_sshd")
+
+    def test_sshd_move_enables_ssh_service(self, mysql_ssh_setup):
+        # Without this, sshd doesn't come back after a reboot.
+        text, _ = mysql_ssh_setup
+        start = text.find("sshd_move() {")
+        body = text[start:text.find("\n}", start)]
+        assert "systemctl enable ssh" in body
+        assert body.index("systemctl disable ssh.socket") < body.index("systemctl enable ssh")
+
     def test_firstboot_has_tailscale_join(self, mysql_ssh_setup):
         text, _ = mysql_ssh_setup
         fb = self._firstboot_branch(text)
@@ -144,6 +158,38 @@ class TestConfigurePorts:
         ufw_allows = re.findall(r"ufw allow \"\d+/tcp\"", fragment_section)
         assert ufw_allows == [], \
             f"Fragment functions contain ufw allow calls that should have been stripped: {ufw_allows}"
+
+
+def _honeypot_servers():
+    manifest = json.loads((REPO_ROOT / "honey-net.json").read_text())
+    return [s for s in manifest if s["type"] == "honeypot"]
+
+
+class TestAllHoneypotServers:
+    @pytest.mark.parametrize("server", _honeypot_servers(), ids=lambda s: s["name"])
+    def test_ports_are_opened_only_by_configure_ports(self, server, tmp_path):
+        import re
+        assemble_honeypot_setup(server, tmp_path)
+        text = (tmp_path / "setup.sh").read_text(encoding="utf-8")
+
+        start = text.find("configure_ports() {")
+        func_body = text[start:text.find("\n}", start)]
+        for port in collect_ports(server):
+            assert f'"{port}/tcp"' in func_body
+
+        m = re.search(r"^fragment_\w+\(\) \{", text, re.MULTILINE)
+        assert m is None or "ufw allow" not in text[m.start():]
+
+
+class TestVectorConfigs:
+    @pytest.mark.parametrize(
+        "path", sorted((REPO_ROOT / "honey-pots").glob("*/deploy/vector/vector.toml")),
+        ids=lambda p: p.parts[-4],
+    )
+    def test_no_if_expression_as_object_value(self, path):
+        # VRL rejects `"key": if ...`, and that one error stops Vector for the whole server.
+        import re
+        assert not re.search(r'"\w+":\s*if\b', path.read_text(encoding="utf-8"))
 
 
 class TestConfFiles:

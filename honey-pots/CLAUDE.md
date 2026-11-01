@@ -102,7 +102,7 @@ Environment variables available:
 | `$LOKI_HOST` | log-stack Tailscale IP (read from state.json by setup.sh) |
 
 Fragment responsibilities:
-- **Open UFW ports** for the public-facing service.
+- **Don't open UFW ports.** Declare them in `package.toml`; the generated `configure_ports()` opens them at first boot and on `reconfigure`, while fragments only run at first boot.
 - **Create volume directories** (Docker assigns wrong ownership if you let it create them lazily). **Always `chown honey:honey` the directory immediately after `mkdir -p`** — `setup.sh` runs `chown -R honey:honey $DEPLOY_DIR` before fragments execute, so any directory a fragment creates afterward is root-owned. A root-owned log dir silently prevents the container from writing (the container's uid=0 maps to `honey` on the host via the rootless user namespace, appearing as `others` against a root-owned dir). Symptom: container logs fine to stdout, log file never appears, Loki stream stays empty.
 - **Create the per-honeypot inbox subdir** with `chmod 777` if it captures samples.
 - **Fix ownership** for non-root container UIDs (Cowrie is 999).

@@ -10,11 +10,6 @@ chown honey:honey "${DEPLOY_DIR}/ftp/volumes/logs"
 mkdir -p "${DEPLOY_DIR}/inbox/ftp"
 chmod 777 "${DEPLOY_DIR}/inbox/ftp"
 
-# ── UFW rules ─────────────────────────────────────────────────────────
-echo "[ftp] Opening firewall ports..."
-ufw allow 21/tcp comment "FTP control"
-ufw allow 60000:60010/tcp comment "FTP passive data"
-
 # ── Build image and start stack ───────────────────────────────────────
 echo "[ftp] Building ftp honeypot image..."
 su -s /bin/bash honey -c "cd ${DEPLOY_DIR} && ${HONEY_DC} build ftp"
