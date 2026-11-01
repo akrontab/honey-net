@@ -21,8 +21,10 @@ STATE = {
 class TestRenderPage:
     def test_links_catalog_and_grafana(self):
         page = render_page(STATE, "2026-10-31 12:00")
-        assert '<a href="http://100.64.0.2:8000">Malware Catalog</a>' in page
-        assert '<a href="http://100.64.0.1:3000">Reporting and Dashboards</a>' in page
+        assert ('<a href="http://100.64.0.2:8000" target="_blank" rel="noopener">'
+                "Malware Catalog</a>") in page
+        assert ('<a href="http://100.64.0.1:3000" target="_blank" rel="noopener">'
+                "Reporting and Dashboards</a>") in page
 
     def test_missing_ip_renders_no_link(self):
         state = {"log-stack": STATE["log-stack"], "malware-catalog": {"tailscale_ip": None}}

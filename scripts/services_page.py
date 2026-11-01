@@ -45,7 +45,7 @@ def _render_service(title, description, server, port, state):
     ts_ip = state.get(server, {}).get("tailscale_ip")
     if ts_ip:
         url = html.escape(f"http://{ts_ip}:{port}", quote=True)
-        heading = f'<a href="{url}">{title_html}</a>'
+        heading = f'<a href="{url}" target="_blank" rel="noopener">{title_html}</a>'
         location = url
     else:
         heading = title_html
