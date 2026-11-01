@@ -15,5 +15,5 @@ def load_manifest():
 def load_state():
     path = REPO_ROOT / "state.json"
     if not path.exists():
-        sys.exit("state.json not found — run sync_ips.py after terraform apply")
+        sys.exit("state.json not found — run python honey.py sync after terraform apply")
     return json.loads(path.read_text(encoding="utf-8"))

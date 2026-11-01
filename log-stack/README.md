@@ -20,7 +20,7 @@ Grafana and Loki are bound to the Tailscale IP only — never exposed to the pub
 This repo is deployed from the `honey-net` control plane. Run from the honey-net root:
 
 ```
-python provision.py --server log-stack
+python honey.py provision --server log-stack
 ```
 
 After setup completes:
@@ -30,7 +30,7 @@ Grafana      : http://100.x.x.x:3000
 Loki         : http://100.x.x.x:3100
 ```
 
-Run `python sync_ips.py` from honey-net root to capture the Tailscale IP into `state.json`. Honeypot Vector sidecars read it from there.
+Run `python honey.py sync` from honey-net root to capture the Tailscale IP into `state.json`. Honeypot Vector sidecars read it from there.
 
 ## Accessing Grafana
 
@@ -55,7 +55,7 @@ Useful LogQL queries in Explore:
 ## Re-deploying after changes
 
 ```
-python redeploy.py --server log-stack   # from honey-net root
+python honey.py redeploy --server log-stack   # from honey-net root
 ```
 
 Rsyncs files from the repo to the server over Tailscale (port 65022), fixes permissions,
@@ -64,7 +64,7 @@ and runs `docker compose up -d`. The `.env` is preserved.
 ## Verifying logs are flowing
 
 ```
-python test_loki.py   # pushes a test line to Loki, prints the LogQL query to check in Grafana
+python honey.py test-loki   # pushes a test line to Loki, prints the LogQL query to check in Grafana
 ```
 
 ## Repo layout
@@ -84,11 +84,6 @@ deploy/
     sshd_hardening.conf
     99-loki-hardening.conf
     fail2ban-jail.local
-
-_lib.py        # shared utilities (reads honey-net.json / state.json from parent repo)
-connect.py     # SSH into this server
-deploy.py      # copy deploy/ to server
-test_loki.py   # push a test log line
 ```
 
 ## Notes

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Checks SSH keys in honey-net.json and generates any that are missing."""
 
+import argparse
 import subprocess
 import sys
 from pathlib import Path
@@ -40,6 +41,10 @@ def check_or_create(raw_path: str) -> None:
 
 
 def main():
+    argparse.ArgumentParser(
+        description="Check SSH keys in honey-net.json and generate any that are missing.",
+    ).parse_args()
+
     servers = load_manifest()
 
     print(bold("\nSSH key status:"))

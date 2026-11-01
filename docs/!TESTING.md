@@ -69,7 +69,7 @@ A test that reaches for `state.json`'s real IPs or opens a socket belongs in tie
   silently breaks bash/YAML on the box. One assertion (`b"\r\n" not in data`) on each
   generated artifact guards the whole class of bug cheaply.
 - **Per-package smoke tests keep the `_lib` idiom** (`select_server`, SSH :65022)
-  and stay runnable individually and via `scripts/test_honeypot.py`.
+  and run via `python honey.py test`.
 - **Run targets:** `pytest` (tiers 1–2, the default dev loop) · `python honey.py
   test` (tier 3, against a chosen server) · `python honey.py check-logs|check-disk`
   (tier 4).

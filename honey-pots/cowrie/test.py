@@ -27,7 +27,7 @@ def main():
     ts_ip  = entry.get("tailscale_ip")
 
     if not pub_ip:
-        sys.exit(f"No public IP for '{name}' in state.json — run sync_ips.py after terraform apply")
+        sys.exit(f"No public IP for '{name}' in state.json — run python honey.py sync after terraform apply")
 
     print(f"\nTesting: {name}")
     print(f"  Public IP   : {pub_ip}")
@@ -65,7 +65,7 @@ def main():
     # ── Tests 3-5 require Tailscale IP ───────────────────────────────────────
     if not ts_ip:
         print()
-        skip(f"Port {MGMT_PORT} reachable — no Tailscale IP (run sync_ips.py after setup.sh)")
+        skip(f"Port {MGMT_PORT} reachable — no Tailscale IP (run python honey.py sync after setup.sh)")
         skip("Container status — no Tailscale IP")
         skip("Cowrie log file — no Tailscale IP")
     else:

@@ -32,7 +32,7 @@ terraform destroy   # tear down all hosts
 
 After `apply`, run from the honey-net root to capture IPs:
 ```
-python sync_ips.py
+python honey.py sync
 ```
 
 ## Adding a server
@@ -40,7 +40,7 @@ python sync_ips.py
 1. Add an entry to `honey-net.json` (name, type, ssh_key, honeypots, ports).
 2. Generate an SSH key pair matching the `ssh_key` path.
 3. `terraform apply` — the new VM is created automatically via `for_each`.
-4. `python sync_ips.py` — adds the new server to `state.json`.
+4. `python honey.py sync` — adds the new server to `state.json`.
 
 ## Retrieving root passwords
 

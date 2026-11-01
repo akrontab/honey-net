@@ -52,7 +52,7 @@ def _check_server(server: dict, state: dict) -> int | None:
     ip    = entry.get("tailscale_ip")
 
     if not ip:
-        print(f"  {red('SKIP')} — no Tailscale IP in state.json (run sync_ips.py)")
+        print(f"  {red('SKIP')} — no Tailscale IP in state.json (run python honey.py sync)")
         return None
 
     key = ssh_key(server["ssh_key"])

@@ -134,4 +134,4 @@ primary source for alerting on new credentials.
 3. Hash-lock the pin: build with `--require-hashes` from a locked `requirements.txt`
    and pin the base image by digest (see `docs/wrapping-upstream-honeypots-plan.md`)
 4. Add a Grafana dashboard under `log-stack/deploy/grafana/provisioning/dashboards/`
-5. `python scripts/provision.py --server <name>`
+5. `python honey.py provision --server <name>`

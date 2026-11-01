@@ -18,7 +18,7 @@ Does NOT touch: .env / secrets, compose stack, or docker images (use redeploy fo
 Does NOT re-provision: no apt install, no Docker setup, no Tailscale join.
 
 Usage:
-  python reconfigure.py [--server NAME] [--dry-run]
+  python honey.py reconfigure [--server NAME] [--dry-run]
 """
 
 import argparse
@@ -60,7 +60,7 @@ def main():
     ts_ip = state.get(name, {}).get("tailscale_ip")
 
     if not ts_ip:
-        sys.exit(f"No Tailscale IP for '{name}' in state.json — run sync_ips.py first")
+        sys.exit(f"No Tailscale IP for '{name}' in state.json — run python honey.py sync first")
 
     # Validate ports and show what will happen.
     print(f"\nValidating port declarations for {name}...")

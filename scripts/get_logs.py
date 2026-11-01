@@ -35,7 +35,7 @@ def main():
     )
 
     if server["type"] != "honeypot":
-        sys.exit(f"'{server['name']}' is a {server['type']} server — get_logs.py only applies to honeypots")
+        sys.exit(f"'{server['name']}' is a {server['type']} server — 'logs' only applies to honeypots")
 
     name   = server["name"]
     key    = ssh_key(server["ssh_key"])
@@ -43,7 +43,7 @@ def main():
     ts_ip  = entry.get("tailscale_ip")
 
     if not ts_ip:
-        sys.exit(f"No Tailscale IP for '{name}' in state.json — run sync_ips.py (Tailscale must be active)")
+        sys.exit(f"No Tailscale IP for '{name}' in state.json — run python honey.py sync (Tailscale must be active)")
 
     local_dir = REPO_ROOT / "logs" / name
     local_dir.mkdir(parents=True, exist_ok=True)

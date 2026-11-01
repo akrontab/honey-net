@@ -37,14 +37,14 @@ def main():
     if args.pre_setup:
         ip = entry.get("public_ip")
         if not ip:
-            sys.exit(f"No public IP for '{name}' in state.json — run sync_ips.py after terraform apply")
+            sys.exit(f"No public IP for '{name}' in state.json — run python honey.py sync after terraform apply")
         port = 22
         print(f"Connecting to {name} ({ip}) on port 22 (pre-setup)...")
     else:
         ip = entry.get("tailscale_ip")
         if not ip:
             print(f"Error: no Tailscale IP for '{name}' in state.json.", file=sys.stderr)
-            print(f"  Run sync_ips.py, or if this is a fresh server: python connect.py -s {name} --pre-setup",
+            print(f"  Run python honey.py sync, or if this is a fresh server: python honey.py connect -s {name} --pre-setup",
                   file=sys.stderr)
             sys.exit(1)
         port = 65022

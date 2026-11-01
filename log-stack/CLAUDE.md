@@ -61,6 +61,3 @@ ss -tlnp | grep sshd    # should show 65022
 
 ### Disk usage on a Nanode (25GB)
 Loki retention is 30 days. On a heavily-attacked honeypot, log volume is significant. If Loki fills the disk, Docker stops writing and the stack goes unhealthy. Monitor with `df -h`; tune `ingestion_rate_mb` or `retention_period` in `loki/loki-config.yml`.
-
-### Legacy `connect.py` / `deploy.py` / `test_loki.py` in this directory
-Predecessors of `scripts/connect.py`, `scripts/redeploy.py`, `scripts/test_loki.py`. Use the root scripts instead — they read `honey-net.json` and target any server.

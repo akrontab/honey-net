@@ -16,12 +16,12 @@ Backends are provisioned before honeypots. Within backends, log-stack comes befo
 malware-catalog because honeypots need the log-stack Tailscale IP as LOKI_HOST.
 
 Usage:
-  python provision.py                         # terraform + provision all servers
-  python provision.py --skip-terraform        # skip terraform, use existing state.json
-  python provision.py --infra-only            # terraform + write state.json, then stop
-  python provision.py --server NAME           # provision one server (terraform still runs
-                                              # unless --skip-terraform is also given)
-  python provision.py --skip-terraform --force  # reprovision even already-provisioned servers
+  python honey.py provision                         # terraform + provision all servers
+  python honey.py provision --skip-terraform        # skip terraform, use existing state.json
+  python honey.py provision --infra-only            # terraform + write state.json, then stop
+  python honey.py provision --server NAME           # provision one server (terraform still runs
+                                                    # unless --skip-terraform is also given)
+  python honey.py provision --skip-terraform --force  # reprovision even already-provisioned servers
 
 Resilience behaviour:
   - Waits up to 120s for SSH to become available after VM creation before SCP.
@@ -312,7 +312,7 @@ def _provision(server, state, ts_api_key, *, grafana_password="",
     pub_ip = state.get(name, {}).get("public_ip")
 
     if not pub_ip:
-        sys.exit(f"No public IP for '{name}' — run sync_ips.py after terraform apply")
+        sys.exit(f"No public IP for '{name}' — run python honey.py sync after terraform apply")
 
     print(bold(f"\n{'─'*60}"))
     print(bold(f"  {name}  ({stype})  {pub_ip}"))
@@ -371,7 +371,7 @@ def _provision(server, state, ts_api_key, *, grafana_password="",
         _write_tailscale_ip(name, ts_ip)
     else:
         print(yellow(f"  Warning: '{name}' did not appear in tailnet within 5 minutes."))
-        print(yellow("  Run sync_ips.py manually to capture the Tailscale IP."))
+        print(yellow("  Run python honey.py sync manually to capture the Tailscale IP."))
 
     return ts_ip
 
@@ -390,11 +390,11 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "examples:\n"
-            "  python provision.py                         # full run: terraform + all servers\n"
-            "  python provision.py --skip-terraform        # skip terraform, provision servers only\n"
-            "  python provision.py --infra-only            # terraform + write state.json, then stop\n"
-            "  python provision.py --server NAME           # provision one server (terraform still runs)\n"
-            "  python provision.py --skip-terraform --force  # reprovision even already-provisioned servers"
+            "  python honey.py provision                         # full run: terraform + all servers\n"
+            "  python honey.py provision --skip-terraform        # skip terraform, provision servers only\n"
+            "  python honey.py provision --infra-only            # terraform + write state.json, then stop\n"
+            "  python honey.py provision --server NAME           # provision one server (terraform still runs)\n"
+            "  python honey.py provision --skip-terraform --force  # reprovision even already-provisioned servers"
         ),
     )
     parser.add_argument("--server", "-s", metavar="NAME",
@@ -477,13 +477,13 @@ def main():
     if args.skip_terraform:
         state_file = REPO_ROOT / "state.json"
         if not state_file.exists():
-            sys.exit("state.json not found — run without --skip-terraform or run sync_ips.py first")
+            sys.exit("state.json not found — run without --skip-terraform or run python honey.py sync first")
         state = json.loads(state_file.read_text(encoding="utf-8"))
     else:
         state = run_terraform(linode_token)
 
     if args.infra_only:
-        print(green("\nInfrastructure ready. Run provision.py --skip-terraform to set up servers."))
+        print(green("\nInfrastructure ready. Run python honey.py provision --skip-terraform to set up servers."))
         return
 
     if not ordered:
