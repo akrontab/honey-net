@@ -378,8 +378,9 @@ def _generate_dispatch_tail(components, port_map, repo_root=None):
     lines.append("    firstboot_apt")
     lines.append("    firstboot_docker")
     lines.append("    ufw_bootstrap")
-    lines.append("    configure_sshd")
+    # sshd_move first: configure_sshd needs ssh.service running (/run/sshd, reload).
     lines.append("    sshd_move")
+    lines.append("    configure_sshd")
     lines.append("    configure_sysctl")
     lines.append("    configure_fail2ban")
     lines.append("    unattended")

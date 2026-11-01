@@ -173,6 +173,8 @@ sshd_move() {
   systemctl stop ssh.socket 2>/dev/null || true
   systemctl disable ssh.socket 2>/dev/null || true
   systemctl daemon-reload
+  # With the socket disabled, nothing starts sshd at boot unless the service is enabled.
+  systemctl enable ssh
   systemctl restart ssh
 
   echo ""

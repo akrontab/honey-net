@@ -10,15 +10,15 @@ Backend servers (`log-stack`, `malware-catalog`) have their own self-contained `
 
 1. **System update** — apt upgrade, install ufw, curl, gnupg, fail2ban, rsync
 2. **Docker CE** — installs docker-compose-plugin, sets custom DNS for containers
-3. **UFW** — opens 65022 broadly (pre-Tailscale); denies all else. Honeypot ports are opened by each honeypot's `fragment.sh`
-4. **sshd** — moves to port 65022, drops in `sshd_hardening.conf`, disables socket activation (Ubuntu 24.04 quirk), restarts
+3. **UFW** — opens 65022 broadly (pre-Tailscale); denies all else. Honeypot ports are opened by the generated `configure_ports()`, from each package's `package.toml`
+4. **sshd** — moves to port 65022, disables socket activation (Ubuntu 24.04 quirk), enables and restarts `ssh.service`, then drops in `sshd_hardening.conf` and reloads. This order matters: `sshd -t` and the reload need the service running
 5. **Kernel hardening** — copies `99-hardening.conf` to `/etc/sysctl.d/`
 6. **fail2ban** — copies `fail2ban-jail.local` to `/etc/fail2ban/jail.d/`
 7. **Unattended upgrades** — dpkg-reconfigure
 8. **Deploy files** — rsync from `/root/<server>` to `/opt/<server>` (excludes `.env`); creates `/opt/<server>/inbox/` with `chmod 777` as the shared sample inbox
 9. **Tailscale** — installs, joins, then tightens 65022 from open-to-all to `tailscale0` interface only; writes `.env` for the stack
 
-After step 9, each honeypot's `fragment.sh` runs (steps 10+): opens honeypot ports, creates volume directories, and builds images. Whether a fragment starts the Compose stack depends on how it is written — cowrie and metadata fragments do not run `docker compose up -d`; mysql, dionaea, and malware-sender do.
+After step 9, each honeypot's `fragment.sh` runs (steps 10+): creates volume directories, and builds images. Whether a fragment starts the Compose stack depends on how it is written — cowrie and metadata fragments do not run `docker compose up -d`; mysql, dionaea, and malware-sender do.
 
 ## Shared sample inbox
 

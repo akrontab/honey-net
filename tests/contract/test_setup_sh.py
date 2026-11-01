@@ -77,6 +77,20 @@ class TestPhaseDispatcher:
         fb = self._firstboot_branch(text)
         assert "sshd_move" in fb
 
+    def test_firstboot_moves_sshd_before_configuring_it(self, mysql_ssh_setup):
+        # configure_sshd runs sshd -t and reloads, which need ssh.service running.
+        text, _ = mysql_ssh_setup
+        fb = self._firstboot_branch(text)
+        assert fb.index("sshd_move") < fb.index("configure_sshd")
+
+    def test_sshd_move_enables_ssh_service(self, mysql_ssh_setup):
+        # Without this, sshd doesn't come back after a reboot.
+        text, _ = mysql_ssh_setup
+        start = text.find("sshd_move() {")
+        body = text[start:text.find("\n}", start)]
+        assert "systemctl enable ssh" in body
+        assert body.index("systemctl disable ssh.socket") < body.index("systemctl enable ssh")
+
     def test_firstboot_has_tailscale_join(self, mysql_ssh_setup):
         text, _ = mysql_ssh_setup
         fb = self._firstboot_branch(text)
