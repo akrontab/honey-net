@@ -35,7 +35,7 @@ echo "
 Done.
 
 Activate the environment:
-  source .venv/bin/activate
+  source ./activate.sh
 
 Then run any script:
   python provision.py --help

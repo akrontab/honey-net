@@ -38,7 +38,7 @@ Write-Host @"
 Done.
 
 Activate the environment:
-  .venv\Scripts\activate
+  .\activate.ps1
 
 Then run any script:
   python provision.py --help

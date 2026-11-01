@@ -13,7 +13,7 @@ Accounts needed: [Linode](https://linode.com) (API token) · [Tailscale](https:/
 git clone https://github.com/akrontab/honey-net
 cd honey-net
 .\setup.ps1                  # macOS/Linux: ./setup.sh
-.venv\Scripts\activate
+.\activate.ps1               # macOS/Linux: source ./activate.sh
 python honey.py check-keys   # generates any missing SSH key pairs
 ```
 
@@ -134,12 +134,12 @@ honey-net/
 ```powershell
 # Windows
 .\setup.ps1
-.venv\Scripts\activate
+.\activate.ps1
 ```
 ```bash
 # macOS / Linux
 ./setup.sh
-source .venv/bin/activate
+source ./activate.sh
 ```
 
 **2. SSH key pairs** — one for each server. Set the path in `honey-net.json` (`ssh_key` field):
