@@ -146,6 +146,27 @@ class TestConfigurePorts:
             f"Fragment functions contain ufw allow calls that should have been stripped: {ufw_allows}"
 
 
+def _honeypot_servers():
+    manifest = json.loads((REPO_ROOT / "honey-net.json").read_text())
+    return [s for s in manifest if s["type"] == "honeypot"]
+
+
+class TestAllHoneypotServers:
+    @pytest.mark.parametrize("server", _honeypot_servers(), ids=lambda s: s["name"])
+    def test_ports_are_opened_only_by_configure_ports(self, server, tmp_path):
+        import re
+        assemble_honeypot_setup(server, tmp_path)
+        text = (tmp_path / "setup.sh").read_text(encoding="utf-8")
+
+        start = text.find("configure_ports() {")
+        func_body = text[start:text.find("\n}", start)]
+        for port in collect_ports(server):
+            assert f'"{port}/tcp"' in func_body
+
+        m = re.search(r"^fragment_\w+\(\) \{", text, re.MULTILINE)
+        assert m is None or "ufw allow" not in text[m.start():]
+
+
 class TestConfFiles:
     def test_conf_files_copied(self, mysql_ssh_setup, tmp_path_factory):
         manifest = json.loads((REPO_ROOT / "honey-net.json").read_text())

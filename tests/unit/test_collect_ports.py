@@ -199,5 +199,6 @@ class TestRealPackages:
         server = next(s for s in manifest if s["name"] == "smb-ftp")
         result = collect_ports(server)
         assert 21 in result   # ftp
+        assert all(p in result for p in range(60000, 60011))  # ftp passive
         assert 139 in result  # smb
         assert 445 in result  # smb
