@@ -37,7 +37,7 @@ def main():
     name = server["name"]
     ip   = state.get(name, {}).get("public_ip")
     if not ip:
-        sys.exit(f"No public IP for '{name}' — run sync_ips.py")
+        sys.exit(f"No public IP for '{name}' — run python honey.py sync")
 
     print(f"Testing ftp on {ip} ({name})...\n")
     results = [

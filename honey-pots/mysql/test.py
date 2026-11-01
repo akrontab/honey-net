@@ -22,7 +22,7 @@ def main():
     ip    = entry.get("public_ip")
 
     if not ip:
-        sys.exit(f"No public IP for '{name}' in state.json — run sync_ips.py after terraform apply")
+        sys.exit(f"No public IP for '{name}' in state.json — run python honey.py sync after terraform apply")
 
     print(f"Connecting to {ip}:3306 ({name})...")
     try:

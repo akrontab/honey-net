@@ -7,9 +7,9 @@ Steps (in order):
   3. state.json reset — overwrites with {}
 
 Usage:
-  python teardown.py           # interactive confirmation
-  python teardown.py --yes     # skip confirmation prompt
-  python teardown.py --dry-run # show what would happen, make no changes
+  python honey.py teardown           # interactive confirmation
+  python honey.py teardown --yes     # skip confirmation prompt
+  python honey.py teardown --dry-run # show what would happen, make no changes
 """
 
 import argparse

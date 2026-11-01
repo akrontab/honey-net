@@ -6,20 +6,23 @@ interactively. Use this script only to update or rotate keys on a running server
 without a full redeploy.
 
 Usage (interactive):
-    python set-keys.py
+    python honey.py set-keys
 
 Usage (non-interactive):
-    python set-keys.py --vt-key <key>
-    python set-keys.py --triage-key <key>
-    python set-keys.py --vt-key clear --triage-key clear
-    python set-keys.py --show
+    python honey.py set-keys --vt-key <key>
+    python honey.py set-keys --triage-key <key>
+    python honey.py set-keys --vt-key clear --triage-key clear
+    python honey.py set-keys --show
 """
 
 import argparse
 import subprocess
 import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from _lib import DEVNULL, find_server, load_manifest, load_state, ssh_key
+from lib.config import load_manifest, load_state
+from lib.ssh import DEVNULL, ssh_key
 
 ENV_PATH    = "/opt/malware-catalog/.env"
 COMPOSE_DIR = "/opt/malware-catalog"
@@ -107,7 +110,7 @@ def _prompt_key(label: str, env_var: str, current: str) -> str | None:
 def main():
     parser = argparse.ArgumentParser(
         description="Set enrichment API keys on the live malware-catalog server.",
-        epilog="Connects over Tailscale (port 65022). Run sync_ips.py first if state.json is missing.",
+        epilog="Connects over Tailscale (port 65022). Run python honey.py sync first if state.json is missing.",
     )
     parser.add_argument("--mb-key",        metavar="KEY",
                         help="MalwareBazaar API key (pass 'clear' to unset)")
@@ -122,7 +125,9 @@ def main():
     parser.add_argument("--user", "-u",   default="root")
     args = parser.parse_args()
 
-    server = find_server(load_manifest())
+    server = next((s for s in load_manifest() if s["name"] == "malware-catalog"), None)
+    if server is None:
+        sys.exit("No 'malware-catalog' entry found in honey-net.json")
     state  = load_state()
     name   = server["name"]
     key    = ssh_key(server["ssh_key"])
@@ -130,7 +135,7 @@ def main():
     ip     = entry.get("tailscale_ip")
 
     if not ip:
-        sys.exit(f"No Tailscale IP for '{name}' in state.json — run sync_ips.py")
+        sys.exit(f"No Tailscale IP for '{name}' in state.json — run python honey.py sync")
 
     print(f"Reading .env from {name} ({ip})...")
     raw     = _read_env(args.user, ip, key, 65022)

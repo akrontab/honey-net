@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Deploy the alerting detector to the log-stack host."""
 
+import argparse
 import shutil
 import subprocess
 import sys
@@ -15,6 +16,10 @@ from lib.ssh import DEVNULL, scp_args, ssh_base_args, ssh_key
 
 
 def main():
+    argparse.ArgumentParser(
+        description="Deploy the alerting detector to the log-stack host.",
+    ).parse_args()
+
     servers = load_manifest()
     state   = load_state()
 
@@ -26,7 +31,7 @@ def main():
     key    = ssh_key(log_stack["ssh_key"])
     ts_ip  = state.get(name, {}).get("tailscale_ip")
     if not ts_ip:
-        sys.exit("No Tailscale IP for log-stack in state.json — run sync_ips.py")
+        sys.exit("No Tailscale IP for log-stack in state.json — run python honey.py sync")
 
     catalog_entry = next((s for s in servers if s["name"] == "malware-catalog"), None)
     catalog_ip    = state.get("malware-catalog", {}).get("tailscale_ip", "") if catalog_entry else ""

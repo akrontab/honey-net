@@ -105,6 +105,7 @@ GROUPS = [
         ("logs",      "get_logs",  "Pull logs from a honeypot server",              None),
         ("backup",    "backup",    "Back up logs, inbox, and malware catalog",       None),
         ("restore",   "restore",   "Restore a backup to the live network",           None),
+        ("analyze-mysql", "analyze_mysql", "Summarize connections per IP from a pulled MySQL log", None),
         ("services-page", "services_page", "Regenerate backend-services.html from state.json", None),
     ]),
     ("Admin", [
@@ -116,6 +117,7 @@ GROUPS = [
         ("test",           "test_honeypot",    "Run smoke tests for a honeypot from this machine", None),
         ("ts-cleanup",     "ts_cleanup",       "Remove stale Tailscale nodes not in Terraform state", None),
         ("deploy-detector","deploy_detector",  "Deploy alerting detector to log-stack",           None),
+        ("set-keys",       "set_keys",         "Set enrichment API keys on the malware-catalog server", None),
     ]),
 ]
 
@@ -174,7 +176,7 @@ def menu():
 def dispatch(cmd):
     module, _, args_fn = _CMD_MAP[cmd]
     extra = args_fn() if args_fn else []
-    sys.argv = [f"{module}.py"] + extra
+    sys.argv = [f"honey.py {cmd}"] + extra
     importlib.import_module(module).main()
 
 def main():
@@ -199,7 +201,7 @@ def main():
         sys.exit(1)
 
     module, _, _ = _CMD_MAP[cmd]
-    sys.argv = [f"{module}.py"] + sys.argv[2:]
+    sys.argv = [f"honey.py {cmd}"] + sys.argv[2:]
     importlib.import_module(module).main()
 
 if __name__ == "__main__":

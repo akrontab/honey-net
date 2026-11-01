@@ -110,6 +110,8 @@ honey-net/
 │   ├── sync_ips.py           ← write IPs from Terraform + Tailscale to state.json
 │   ├── services_page.py      ← generate backend-services.html from state.json
 │   ├── get_logs.py           ← pull logs from a honeypot
+│   ├── analyze_mysql.py      ← per-IP rollup of a pulled MySQL log
+│   ├── set_keys.py           ← set enrichment API keys on the catalog server
 │   ├── gen_ts_key.py         ← generate a Tailscale auth key
 │   ├── check_ssh_keys.py     ← check / generate SSH keys for all servers
 │   ├── check_logs.py         ← check log stream freshness in Loki
@@ -227,7 +229,7 @@ Copies updated files to the server via Tailscale (port 65022) and runs `docker c
 python honey.py logs --server mysql-ssh   # saves logs/ to logs/mysql-ssh/
 ```
 
-By convention each honeypot writes JSON logs to `/opt/<server>/<honeypot>/volumes/logs/<honeypot>.json`. `get_logs.py` reads from these paths automatically.
+By convention each honeypot writes JSON logs to `/opt/<server>/<honeypot>/volumes/logs/<honeypot>.json`. `python honey.py logs` reads from these paths automatically.
 
 ## Useful server commands
 
@@ -258,7 +260,7 @@ The catalog runs three enrichment workers alongside the API. The first (`static-
 
 **Triage API key** *(optional, enables dynamic sandbox analysis)* — [tria.ge/account/api](https://tria.ge/account/api). Free public tier available. Submissions are **public**, so by default only ELF/PE samples (already public via MalwareBazaar) are uploaded.
 
-Keys go in `malware-catalog/deploy/.env` on the catalog server. Set or rotate them with `python set-keys.py` from `malware-catalog/`. Without any intel keys, only `static-analyzer` runs; `sandbox-submitter` also requires `COMPOSE_PROFILES=triage`.
+Keys go in `malware-catalog/deploy/.env` on the catalog server. Set or rotate them with `python honey.py set-keys`. Without any intel keys, only `static-analyzer` runs; `sandbox-submitter` also requires `COMPOSE_PROFILES=triage`.
 
 ## honey.py — interactive launcher
 
@@ -293,6 +295,8 @@ python honey.py redeploy --server mysql-ssh
 python honey.py logs --server mysql-ssh
 python honey.py sync
 python honey.py services-page
+python honey.py set-keys --show
+python honey.py analyze-mysql
 python honey.py gen-key --ephemeral
 python honey.py check-keys
 python honey.py check-logs

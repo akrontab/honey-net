@@ -54,11 +54,9 @@ you will receive a detection on every management SSH session.
 
 ```
 python honey.py deploy-detector
-# or directly:
-python scripts/deploy_detector.py
 ```
 
-The script reads `state.json` for `LOKI_HOST` (log-stack Tailscale IP) and
+The command reads `state.json` for `LOKI_HOST` (log-stack Tailscale IP) and
 `CATALOG_URL` (malware-catalog Tailscale IP), writes `.env` automatically, and
 redeploys only the alerting service without touching Loki or Grafana.
 

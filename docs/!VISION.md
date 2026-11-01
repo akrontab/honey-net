@@ -177,7 +177,7 @@ control-plane observability); this theme owns the *content* that flows through i
 — the debt backlog, the test coverage, the doc-vs-code accuracy, and the triage
 discipline itself. `BACKLOG.md` is the intake for graduated defects and debt
 (e.g. the queued "remove honeypot-specific references from the README"); the
-existing `honey-pots/*/test.py`, `scripts/test_*.py`, and `log-stack/test_loki.py`
+existing `honey-pots/*/test.py` and `scripts/test_*.py`
 are the verification surface to grow and wire into CI when *Operational maturity*
 stands one up. No plan file yet — this graduates to one (and into
 `docs/!DEPENDENCIES.md`) when the debt warrants a real design rather than

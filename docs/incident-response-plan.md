@@ -29,8 +29,8 @@ per-scenario runbooks and alerting graduate to `BACKLOG.md` from here.
 
 | Failure | Detection | Response |
 |---|---|---|
-| Service / container crash | Grafana stream gap; `check_logs.py` | `docker compose restart <svc>`; if the host is unhealthy, reprovision. |
-| Disk full (25 GB Nanode) | `check_disk.py` | Prune images/old logs; captured samples already shipped to the catalog, so local loss is acceptable; if recurring, add log rotation or a bigger plan. |
+| Service / container crash | Grafana stream gap; `honey.py check-logs` | `docker compose restart <svc>`; if the host is unhealthy, reprovision. |
+| Disk full (25 GB Nanode) | `honey.py check-disk` | Prune images/old logs; captured samples already shipped to the catalog, so local loss is acceptable; if recurring, add log rotation or a bigger plan. |
 | Host / container compromise (expected) | Anomalous egress, fail2ban spikes, host metrics | Treat as data, not emergency: confirm logs shipped, then `terraform destroy` + `provision.py` to rebuild fresh. The ephemeral Tailscale node auto-cleans on destroy. |
 | Log shipping stopped (Vector) | Stream present then silent while host is up | **Known mode:** a stale Vector checkpoint past EOF after a log-volume recreate ships nothing silently. Fix by renaming the source key + `device_and_inode` fingerprinting (see internal notes). |
 | Public-port regression (host port exposed) | External scan / UFW audit | Re-assert UFW; honeypot ports must bind to the container, never the host. |
@@ -44,14 +44,14 @@ per-scenario runbooks and alerting graduate to `BACKLOG.md` from here.
 | Catalog API down | `malware-sender` submissions fail | Restart; the shared `inbox/` holds samples until it returns — they accumulate safely, nothing is dropped. |
 | SQLite lock / corruption | `database is locked` under concurrent writes (no WAL mode) | Retry transient locks; if corrupt, restore from backup. Revisit WAL if write rate grows (see `malware-catalog/CLAUDE.md`). |
 | Backend compromise | Crown-jewel breach indicators | Rotate the fleet anchor + Tailscale keys; restore catalog/logs from backup; rebuild the host; post-mortem from the immutable off-box logs. |
-| Disk full / sample-store growth | `check_disk.py`; catalog size | Prune/rotate; offload or archive old samples. |
+| Disk full / sample-store growth | `honey.py check-disk`; catalog size | Prune/rotate; offload or archive old samples. |
 
 ### Network / Tailscale
 
 | Failure | Detection | Response |
 |---|---|---|
 | Tailscale outage | No admin service or :65022 reachable | Break-glass via provider console; honeypots keep capturing locally and Vectors queue until the tailnet returns. |
-| Auth-key expiry | New/rebooted node won't join the tailnet | Regenerate (`gen_ts_key.py`); use non-ephemeral keys for backends, ephemeral for honeypots. |
+| Auth-key expiry | New/rebooted node won't join the tailnet | Regenerate (`honey.py gen-key`); use non-ephemeral keys for backends, ephemeral for honeypots. |
 | Provider / region outage | Hosts unreachable or down | Honeypots: reprovision elsewhere. Backends: restore from backup into a new region. |
 | UFW / sshd lockout on :65022 | Can't SSH even over the tailnet | Provider console break-glass; fix UFW/sshd. (This is why setup verifies key login *before* hardening.) |
 
@@ -61,12 +61,12 @@ per-scenario runbooks and alerting graduate to `BACKLOG.md` from here.
 |---|---|---|
 | Management host down | Operators lose the access funnel | Break-glass via provider console; the mgmt host is reprovisionable from config. |
 | Single anchor / CA-key compromise | The rotate-at-will scenario | Rotate the one anchor, re-trust the fleet, KRL old certs — the property `docs/multi-operator-plan.md` is built to deliver. |
-| `state.json` drift | Scripts target stale IPs | `sync_ips.py` to reconcile from Terraform + Tailscale. |
+| `state.json` drift | Scripts target stale IPs | `honey.py sync` to reconcile from Terraform + Tailscale. |
 
 ## Playbooks (the high-impact scenarios)
 
 1. **Honeypot compromise** → confirm logs shipped → snapshot any captured samples
-   → `terraform destroy` the VM → `provision.py` to rebuild fresh → verify streams
+   → `terraform destroy` the VM → `honey.py provision` to rebuild fresh → verify streams
    resume in Grafana.
 2. **Backend compromise** → isolate (tighten UFW / pull from tailnet) → rotate
    fleet anchor + Tailscale keys → restore from backup → rebuild host →
@@ -82,8 +82,8 @@ per-scenario runbooks and alerting graduate to `BACKLOG.md` from here.
 ## Relies on (preconditions)
 
 - Continuous off-box log shipping (already in place) so post-mortems survive host loss.
-- Backups: `scripts/backup.py` / `scripts/restore.py` for logs, inbox, and the malware catalog (`BACKLOG.md` Done).
-- Health checks: `check_logs.py`, `check_disk.py`, `test_loki.py`.
+- Backups: `honey.py backup` / `honey.py restore` for logs, inbox, and the malware catalog (`BACKLOG.md` Done).
+- Health checks: `honey.py check-logs`, `honey.py check-disk`, `honey.py test-loki`.
 - Ephemeral honeypots (`tailscale_ephemeral`) so destroy/rebuild is clean.
 - A provider-specific break-glass console (LISH on Linode; differs per cloud).
 - The single rotatable trust anchor from `docs/multi-operator-plan.md`.

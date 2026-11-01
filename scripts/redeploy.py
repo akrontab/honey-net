@@ -34,7 +34,7 @@ def main():
     ts_ip  = entry.get("tailscale_ip")
 
     if not ts_ip:
-        sys.exit(f"No Tailscale IP for '{name}' in state.json — run sync_ips.py (Tailscale must be active)")
+        sys.exit(f"No Tailscale IP for '{name}' in state.json — run python honey.py sync (Tailscale must be active)")
 
     ssh_opts = ["-i", key, "-p", "65022",
                 "-o", "StrictHostKeyChecking=no",

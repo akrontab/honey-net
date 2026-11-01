@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Reads Terraform outputs and Tailscale device IPs, writes state.json."""
 
+import argparse
 import json
 import subprocess
 import sys
@@ -11,6 +12,10 @@ from lib.color import bold
 from lib.config import REPO_ROOT, load_manifest
 
 def main():
+    argparse.ArgumentParser(
+        description="Sync IPs from Terraform + Tailscale to state.json.",
+    ).parse_args()
+
     tf_dir     = REPO_ROOT / "terraform"
     state_file = REPO_ROOT / "state.json"
     ts_key_file = Path.home() / ".tailscale-apikey"

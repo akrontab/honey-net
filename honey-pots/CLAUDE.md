@@ -134,7 +134,7 @@ Fragment responsibilities:
 - [ ] `test.py` (smoke test — see existing honeypots for the `_lib` import pattern)
 - [ ] Entry in `honey-net.json`
 - [ ] SSH key pair at the `ssh_key` path
-- [ ] `python scripts/provision.py --server <name>`
+- [ ] `python honey.py provision --server <name>`
 - [ ] Grafana deep-dive dashboard under `log-stack/deploy/grafana/provisioning/dashboards/Deep-dives/` (raw `{job="<name>"}` stream; per-protocol `eventid` detail belongs here, not in the workflow-tier boards). The workflow-tier boards (Triage/Hunt/Operate) pick up the pot automatically once its Vector transform emits `{job="events"}` — no edits needed there.
 
 ## Wrapping an upstream honeypot (code we don't control)

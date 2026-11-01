@@ -51,7 +51,7 @@ def main():
         name      = server["name"]
         loki_host = state.get(name, {}).get("tailscale_ip")
         if not loki_host:
-            sys.exit(f"No Tailscale IP for '{name}' in state.json — run sync_ips.py")
+            sys.exit(f"No Tailscale IP for '{name}' in state.json — run python honey.py sync")
         print(f"Using {name} Tailscale IP: {loki_host}")
 
     ts_ns   = str(time.time_ns())

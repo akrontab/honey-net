@@ -5,10 +5,10 @@ honey-net.json is NOT modified, so the server can be reprovisioned immediately
 with: python honey.py provision --server <name>
 
 Usage:
-  python deprovision.py                # interactive server selection
-  python deprovision.py --server NAME  # target a specific server
-  python deprovision.py --dry-run      # show what would happen, make no changes
-  python deprovision.py --yes          # skip confirmation prompt
+  python honey.py deprovision                # interactive server selection
+  python honey.py deprovision --server NAME  # target a specific server
+  python honey.py deprovision --dry-run      # show what would happen, make no changes
+  python honey.py deprovision --yes          # skip confirmation prompt
 """
 
 import argparse
@@ -151,8 +151,8 @@ def main():
         epilog=(
             "honey-net.json is NOT modified — run provision again to recreate the server.\n\n"
             "examples:\n"
-            "  python deprovision.py --server smb-ftp\n"
-            "  python deprovision.py --server smb-ftp --dry-run"
+            "  python honey.py deprovision --server smb-ftp\n"
+            "  python honey.py deprovision --server smb-ftp --dry-run"
         ),
     )
     parser.add_argument("--server", "-s", metavar="NAME")
