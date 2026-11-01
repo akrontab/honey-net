@@ -105,6 +105,7 @@ GROUPS = [
         ("logs",      "get_logs",  "Pull logs from a honeypot server",              None),
         ("backup",    "backup",    "Back up logs, inbox, and malware catalog",       None),
         ("restore",   "restore",   "Restore a backup to the live network",           None),
+        ("services-page", "services_page", "Regenerate backend-services.html from state.json", None),
     ]),
     ("Admin", [
         ("gen-key",        "gen_ts_key",       "Generate a Tailscale auth key",                  _gen_key_args),

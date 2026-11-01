@@ -10,6 +10,7 @@ Phases:
        c. SSH + run setup.sh with env vars (no interactive prompts on the server)
        d. Poll Tailscale API until the node registers; write Tailscale IP to state.json
        e. Thread LOKI_HOST / CATALOG_URL forward to subsequent servers
+  3. Services page — writes backend-services.html with links to the backend services
 
 Backends are provisioned before honeypots. Within backends, log-stack comes before
 malware-catalog because honeypots need the log-stack Tailscale IP as LOKI_HOST.
@@ -50,6 +51,7 @@ from lib.files import copy_tree
 from lib.package import assemble_honeypot_package, assemble_honeypot_setup
 from lib.ssh import DEVNULL, ssh_key, ssh_base_args, scp_args, run_ssh
 from check_ssh_keys import check_or_create
+from services_page import write_page
 
 _TF_DIR = REPO_ROOT / "terraform"
 _STATE_FILE = REPO_ROOT / "state.json"
@@ -498,29 +500,33 @@ def main():
     catalog_ip  = state.get("malware-catalog", {}).get("tailscale_ip") or ""
     catalog_url = f"http://{catalog_ip}:8000" if catalog_ip else ""
 
-    for server in ordered:
-        # Re-read state so each iteration sees Tailscale IPs written by the previous server
-        state = json.loads(_STATE_FILE.read_text(encoding="utf-8"))
+    try:
+        for server in ordered:
+            # Re-read state so each iteration sees Tailscale IPs written by the previous server
+            state = json.loads(_STATE_FILE.read_text(encoding="utf-8"))
 
-        ts_ip = _provision(
-            server, state, ts_api_key,
-            grafana_password=grafana_password,
-            loki_host=loki_host,
-            catalog_url=catalog_url,
-            mb_api_key=mb_api_key,
-            vt_api_key=vt_api_key,
-            triage_api_key=triage_api_key,
-            force=args.force,
-        )
+            ts_ip = _provision(
+                server, state, ts_api_key,
+                grafana_password=grafana_password,
+                loki_host=loki_host,
+                catalog_url=catalog_url,
+                mb_api_key=mb_api_key,
+                vt_api_key=vt_api_key,
+                triage_api_key=triage_api_key,
+                force=args.force,
+            )
 
-        if server["name"] == "log-stack" and ts_ip:
-            loki_host = ts_ip
-            print(f"  LOKI_HOST → {loki_host}")
-        if server["name"] == "malware-catalog" and ts_ip:
-            catalog_url = f"http://{ts_ip}:8000"
-            print(f"  CATALOG_URL → {catalog_url}")
+            if server["name"] == "log-stack" and ts_ip:
+                loki_host = ts_ip
+                print(f"  LOKI_HOST → {loki_host}")
+            if server["name"] == "malware-catalog" and ts_ip:
+                catalog_url = f"http://{ts_ip}:8000"
+                print(f"  CATALOG_URL → {catalog_url}")
+    finally:
+        # Also on a mid-run failure, so backends that came up are still linked.
+        print(green(f"\nBackend services page: {write_page().as_uri()}"))
 
-    print(green(f"\nAll {len(ordered)} server(s) provisioned."))
+    print(green(f"All {len(ordered)} server(s) provisioned."))
 
 
 if __name__ == "__main__":

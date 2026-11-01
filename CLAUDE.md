@@ -31,7 +31,7 @@ See `server-config/CLAUDE.md` for hardening details.
 
 ## Control plane
 
-`honey.py` is the single entry point — has a hardcoded `COMMANDS` list mapping names to modules in `scripts/`; adding a new script requires a manual entry there. Handles credentials upfront, threads state (`state.json`, IPs, `LOKI_HOST`) between dependent deploys, exposes everything as a menu or flag-based invocation. Scripts are independently runnable (`python scripts/<name>.py`).
+`honey.py` is the single entry point — has a hardcoded `COMMANDS` list mapping names to modules in `scripts/`; adding a new script requires a manual entry there. Handles credentials upfront, threads state (`state.json`, IPs, `LOKI_HOST`) between dependent deploys, exposes everything as a menu or flag-based invocation. Scripts are independently runnable (`python scripts/<name>.py`). `provision` finishes by writing the gitignored `backend-services.html` (links to the catalog UI and Grafana, built from `state.json`); `services-page` regenerates it.
 
 ## Deployment
 

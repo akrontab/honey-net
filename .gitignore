@@ -1,5 +1,6 @@
 .tailscale-apikey
 state.json
+backend-services.html
 logs/
 backups/
 .claude/
