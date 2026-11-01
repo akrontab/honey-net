@@ -181,6 +181,17 @@ class TestAllHoneypotServers:
         assert m is None or "ufw allow" not in text[m.start():]
 
 
+class TestVectorConfigs:
+    @pytest.mark.parametrize(
+        "path", sorted((REPO_ROOT / "honey-pots").glob("*/deploy/vector/vector.toml")),
+        ids=lambda p: p.parts[-4],
+    )
+    def test_no_if_expression_as_object_value(self, path):
+        # VRL rejects `"key": if ...`, and that one error stops Vector for the whole server.
+        import re
+        assert not re.search(r'"\w+":\s*if\b', path.read_text(encoding="utf-8"))
+
+
 class TestConfFiles:
     def test_conf_files_copied(self, mysql_ssh_setup, tmp_path_factory):
         manifest = json.loads((REPO_ROOT / "honey-net.json").read_text())
