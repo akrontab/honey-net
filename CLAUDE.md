@@ -33,7 +33,7 @@ See `server-config/CLAUDE.md` for hardening details.
 
 `honey.py` is the single entry point — has a hardcoded `COMMANDS` list mapping names to modules in `scripts/`; adding a new script requires a manual entry there. Handles credentials upfront, threads state (`state.json`, IPs, `LOKI_HOST`) between dependent deploys, exposes everything as a menu or flag-based invocation. Scripts are independently runnable (`python scripts/<name>.py`). `provision` finishes by writing the gitignored `backend-services.html` (links to the catalog UI and Grafana, built from `state.json`); `services-page` regenerates it.
 
-Local environment: `setup.ps1` / `setup.sh` create `.venv` once; `.\activate.ps1` / `source ./activate.sh` activate it per terminal. `honey.py` re-execs into the venv on Windows only, so elsewhere, and for direct script runs, activate first.
+Local environment: `setup.ps1` / `setup.sh` create `.venv` once; `.\activate.ps1` / `source ./activate.sh` activate it per terminal. `honey.py` re-execs into the venv on Windows only, so activate first elsewhere. User-facing docs and setup output direct people to `honey.py` commands, not individual scripts.
 
 ## Deployment
 

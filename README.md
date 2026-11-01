@@ -146,7 +146,7 @@ source ./activate.sh
 
 Setup only runs once, but activate in each new terminal. Both activate scripts work from any directory, and `deactivate` leaves the environment. Use `source` for `activate.sh`: running it directly can't change your current shell, so it stops with an error.
 
-On Windows, `python honey.py` finds the venv by itself, so activation is only needed to run scripts directly (`python scripts/<name>.py`). On macOS and Linux, always activate first.
+On Windows, `python honey.py` finds the venv by itself, so activating is optional there. On macOS and Linux, always activate first.
 
 **2. SSH key pairs** — one for each server. Set the path in `honey-net.json` (`ssh_key` field):
 ```powershell
@@ -159,7 +159,7 @@ ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\mysql-ssh-honeypot"
 **4. Tailscale account** — [tailscale.com](https://tailscale.com). Free tier covers this entire project.
 - Tailscale API key (tailscale.com → Settings → Keys → Generate API key)
 - Saved to `~/.tailscale-apikey` on first run; subsequent runs read it automatically
-- Generate auth keys with `python scripts/gen_ts_key.py` (non-ephemeral for backends, `--ephemeral` for honeypots)
+- Generate auth keys with `python honey.py gen-key` (non-ephemeral for backends, `--ephemeral` for honeypots)
 
 ## Provisioning
 
@@ -173,7 +173,7 @@ terraform init
 terraform plan
 terraform apply
 cd ..
-python scripts/sync_ips.py    # reads terraform output + Tailscale API, writes state.json
+python honey.py sync    # reads terraform output + Tailscale API, writes state.json
 ```
 
 To destroy all infrastructure:
@@ -187,7 +187,7 @@ Deploy log-stack first — its Tailscale IP is required by Vector on every honey
 
 **1. Deploy log-stack**
 ```
-python scripts/provision.py --server log-stack
+python honey.py provision --server log-stack
 ```
 Prompts for Tailscale API key, Grafana admin password, then runs end-to-end: waits for SSH, generates Tailscale auth key, SCPs files, runs `setup.sh`, polls Tailscale until registered, and writes the Tailscale IP to `state.json`.
 
@@ -195,13 +195,13 @@ If interrupted and restarted, servers already in `state.json` are skipped (with 
 
 **2. Deploy honeypots**
 ```
-python scripts/provision.py --server mysql-ssh
+python honey.py provision --server mysql-ssh
 ```
-Same flow. `provision.py` reads `LOKI_HOST` from `state.json` (set in step 1) and passes it to `setup.sh` automatically. After setup, port 22 closes and SSH moves to port 65022 (Tailscale only).
+Same flow. `provision` reads `LOKI_HOST` from `state.json` (set in step 1) and passes it to `setup.sh` automatically. After setup, port 22 closes and SSH moves to port 65022 (Tailscale only).
 
 **3. Verify logs are flowing**
 ```
-python scripts/test_loki.py    # Push a test log line to Loki
+python honey.py test-loki    # Push a test log line to Loki
 ```
 Open Grafana at `http://<log-stack-tailscale-ip>:3000`:
 - `{job="cowrie"}` — raw Cowrie events
@@ -215,8 +215,8 @@ Open Grafana at `http://<log-stack-tailscale-ip>:3000`:
 ## Re-deploying after changes
 
 ```
-python scripts/redeploy.py --server mysql-ssh   # Tailscale required
-python scripts/redeploy.py --server log-stack
+python honey.py redeploy --server mysql-ssh   # Tailscale required
+python honey.py redeploy --server log-stack
 ```
 
 Copies updated files to the server via Tailscale (port 65022) and runs `docker compose up -d`. Does not touch system configuration; `.env` is preserved.
@@ -224,7 +224,7 @@ Copies updated files to the server via Tailscale (port 65022) and runs `docker c
 ## Pulling logs
 
 ```
-python scripts/get_logs.py --server mysql-ssh   # saves logs/ to logs/mysql-ssh/
+python honey.py logs --server mysql-ssh   # saves logs/ to logs/mysql-ssh/
 ```
 
 By convention each honeypot writes JSON logs to `/opt/<server>/<honeypot>/volumes/logs/<honeypot>.json`. `get_logs.py` reads from these paths automatically.
@@ -298,15 +298,6 @@ python honey.py check-keys
 python honey.py check-logs
 python honey.py check-disk
 python honey.py check-disk --server log-stack
-```
-
-Or invoke the scripts directly — same flags, same behavior:
-
-```
-python scripts/connect.py --server mysql-ssh
-python scripts/redeploy.py --server mysql-ssh
-python scripts/get_logs.py --server mysql-ssh
-python scripts/sync_ips.py
 ```
 
 ## Adding a honeypot server
