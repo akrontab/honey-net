@@ -1,0 +1,2 @@
+# Sourced by bash, which fails on CRLF; autocrlf would otherwise convert it on Windows.
+activate.sh text eol=lf

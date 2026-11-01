@@ -38,10 +38,9 @@ Write-Host @"
 Done.
 
 Activate the environment:
-  .venv\Scripts\activate
+  .\activate.ps1
 
-Then run any script:
-  python provision.py --help
-  python connect.py --help
-  python sync_ips.py
+Then run the control plane:
+  python honey.py
+  python honey.py --help
 "@
