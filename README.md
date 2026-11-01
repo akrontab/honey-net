@@ -122,6 +122,8 @@ honey-net/
 ├── _lib.py                   ← backward-compat shim for honey-pots/*/test.py
 ├── setup.ps1                 ← one-time local setup (Windows)
 ├── setup.sh                  ← one-time local setup (macOS/Linux)
+├── activate.ps1              ← activate .venv in the current session (PowerShell)
+├── activate.sh               ← activate .venv in the current shell (bash/zsh; must be sourced)
 └── requirements.txt
 ```
 
@@ -141,6 +143,10 @@ honey-net/
 ./setup.sh
 source ./activate.sh
 ```
+
+Setup only runs once, but activate in each new terminal. Both activate scripts work from any directory, and `deactivate` leaves the environment. Use `source` for `activate.sh`: running it directly can't change your current shell, so it stops with an error.
+
+On Windows, `python honey.py` finds the venv by itself, so activation is only needed to run scripts directly (`python scripts/<name>.py`). On macOS and Linux, always activate first.
 
 **2. SSH key pairs** — one for each server. Set the path in `honey-net.json` (`ssh_key` field):
 ```powershell
